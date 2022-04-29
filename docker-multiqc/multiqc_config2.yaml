@@ -1,0 +1,61 @@
+subtitle: "Exome QC report"
+intro_text: False
+report_comment: False
+custom_logo: '/opt/files/MGIlogo.png'
+custom_logo_url: 'https://www.genome.wustl.edu'
+custom_logo_title: 'McDonnell Genome Institute'
+
+report_header_info:
+    - Assay: 'IDT exome assay v1.0'
+    - Lab: 'MGI CLIA-Licensed Environment'
+    - CAP: '9047655'
+    - CLIA: '26D2092546'
+    - Medical Director: 'David H. Spencer MD, PhD'
+    - Address: 'McDonnell Genome Institute<br/>4444 Forest Park Avenue, Rm 4127<br/>St. Louis, Missouri 63108'
+    - Contact E-mail: 'cle@gowustl.onmicrosoft.com'
+    - Phone: '(314) 286-1460'
+    - Fax: '(314) 286-1810'
+
+sp:
+ fastqc/data:
+  fn: '*_fastqc_data.txt'
+  
+module_order:
+    - general_stats
+    - fastqc:
+        name: 'Read Quality'
+        info: 'FastQC read quality metrics'
+        target: ''
+    - samtools:
+        name: 'Alignment Statistics'
+        info: 'Samtools alignment metrics'
+    - custom_content:
+        name: 'Mapping Quality'
+        info: 'Mean mapping quality'
+    - picard:
+        name: 'Capture and Coverage Statistics'
+        info: 'Metrics from Picard CollectHSMetrics'
+
+remove_sections:
+    - fastqc_sequence_counts
+    - fastqc_per_base_sequence_content
+    - fastqc_per_base_n_content
+    - fastqc_sequence_duplication_levels
+    - fastqc_overrepresented_sequences
+    - fastqc_adapter_content
+    - picard_hsmetrics_hs_penalty
+    - picard-alignmentsummary
+
+table_columns_visible:
+ 'Read Quality':
+    percent_duplicates: False
+    percent_gc: False
+    total_sequences: True
+ 'Capture and Coverage Statistics':
+    bait_design_efficiency: False
+
+picard_config:
+ general_stats_target_coverage:
+  - 1
+  - 30
+  - 100
