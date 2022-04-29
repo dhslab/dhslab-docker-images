@@ -1,4 +1,4 @@
-FROM dhspence/docker-baseimage:latest
+FROM dhspence/docker-baseimage:031822
 
 ADD https://bootstrap.pypa.io/get-pip.py /tmp/get-pip.py
 

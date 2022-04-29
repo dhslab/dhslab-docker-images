@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:20.04
 MAINTAINER Dave Spencer <dhspence@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive

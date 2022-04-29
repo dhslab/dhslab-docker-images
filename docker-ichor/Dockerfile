@@ -1,6 +1,8 @@
-FROM dhspence/docker-baseimage:latest
+FROM dhspence/docker-baseimage:031822
 
+MAINTAINER David Spencer <dspencer@wustl.edu>
 
+LABEL Image for basic ad-hoc bioinformatic analyses
 
 # install hmmcopy
 RUN apt-get update && apt-get install cmake \
@@ -73,16 +75,16 @@ RUN cd /tmp/ && \
     ln -s /usr/local/lib/R/site-library/littler/examples/installGithub.r /usr/local/bin/installGithub.r && \
     ln -s /usr/local/lib/R/site-library/littler/bin/r /usr/local/bin/r
 
-   RUN Rscript -e "source('https://bioconductor.org/biocLite.R'); biocLite('HMMcopy'); biocLite('GenomeInfoDb'); install.packages(c('devtools','optparse'))"
-   RUN Rscript --default-packages=devtools -e "install_github('broadinstitute/ichorCNA', '--no-docs')"
+RUN Rscript -e "source('https://bioconductor.org/biocLite.R'); biocLite('HMMcopy'); biocLite('GenomeInfoDb'); install.packages(c('devtools','optparse'))"
+RUN Rscript --default-packages=devtools -e "install_github('broadinstitute/ichorCNA', '--no-docs')"
 
-   RUN cd /opt/ && wget https://github.com/broadinstitute/ichorCNA/archive/master.zip && \
+RUN cd /opt/ && wget https://github.com/broadinstitute/ichorCNA/archive/master.zip && \
        unzip master.zip && mv ichorCNA-master/scripts/*.R /usr/local/bin/ && rm -Rf master.zip ichorCNA-master
        
-   ## Clean up
-   RUN cd / && \
-   rm -rf /tmp/* && \
-   apt-get autoremove -y && \
-   apt-get autoclean -y && \
-   rm -rf /var/lib/apt/lists/* && \
-   apt-get clean
+## Clean up
+RUN cd / && \
+    rm -rf /tmp/* && \
+    apt-get autoremove -y && \
+    apt-get autoclean -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean

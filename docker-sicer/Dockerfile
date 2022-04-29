@@ -1,6 +1,6 @@
-FROM dhspence/docker-genomic-analysis
-MAINTAINER David Spencer <dspencer@wustl.edu>
+FROM dhspence/docker-baseimage:031822
 
+MAINTAINER David Spencer <dspencer@wustl.edu>
 LABEL Image with sicer
 
 RUN apt-get update && apt-get install -y --no-install-recommends locales && \

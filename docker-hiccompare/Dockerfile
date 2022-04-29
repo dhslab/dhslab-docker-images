@@ -1,4 +1,4 @@
-FROM dhspence/docker-genomic-analysis:latest
+FROM dhspence/docker-genomic-analysis:122121
 MAINTAINER David Spencer <dhspence@gmail.com>
 
 LABEL description="hiccompare"

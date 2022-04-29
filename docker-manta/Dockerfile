@@ -1,7 +1,7 @@
-FROM dhspence/docker-genomic-analysis:latest
+FROM dhspence/docker-baseimage:122121
 MAINTAINER David H. Spencer <dspencer@wustl.edu>
 
-LABEL description="Heavy container with Manta"
+LABEL description="Container with Manta"
 
 ENV manta_version 1.5.0
 

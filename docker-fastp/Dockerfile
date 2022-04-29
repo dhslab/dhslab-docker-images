@@ -1,4 +1,4 @@
-FROM dhspence/docker-baseimage
+FROM dhspence/docker-baseimage:031822
 MAINTAINER "Dave Spencer" <dhspence@gmail.com>
 
 WORKDIR /opt/
