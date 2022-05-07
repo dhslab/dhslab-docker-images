@@ -1,5 +1,5 @@
 # docker-baseimage
-Base image with a few genomic analysis tools
+
 FROM ubuntu:20.04
 MAINTAINER David Spencer <dspencer@wustl.edu>
 

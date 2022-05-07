@@ -1,9 +1,10 @@
-# docker-gassembly
+# docker-merqury
 
 FROM ubuntu:20.04
-MAINTAINER "Dave Spencer" <dhspence@gmail.com>
+MAINTAINER David H. Spencer <dspencer@wustl.edu>
 
-LABEL description="merqury"	
+LABEL \
+  description="merqury"	
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -32,7 +33,7 @@ RUN apt-get update -y && apt-get install -y \
     ncurses-dev \
     nodejs \
     pkg-config \
-    python3.9 \
+    python3.6 \
     python3-pip \
     python3-dev \
     rsync \
@@ -72,9 +73,7 @@ RUN apt-get update -y && apt-get install -y \
     liblzma-dev \
     ncurses-dev \
     libcurl4-openssl-dev \
-    bedtools \
-    seqtk \
-    cmake
+    bedtools
 
 ##############
 #HTSlib 1.13#
@@ -110,11 +109,6 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.13/samtools-1.
     rm -rf /tmp/samtools-1.13
 
 
-RUN cd /opt/ && \
-    git clone https://github.com/lh3/minimap2 && \
-    cd minimap2 && make && \
-    cp minimap2 /usr/local/bin/
-
 # merquery
  
 WORKDIR /tmp
@@ -148,39 +142,10 @@ RUN wget https://github.com/mummer4/mummer/releases/download/v4.0.0rc1/mummer-4.
 
 WORKDIR /tmp
 
-RUN pip install --upgrade pip && \
-    git clone https://github.com/eldariont/svim-asm.git && \
+RUN git clone https://github.com/eldariont/svim-asm.git && \
     cd svim-asm && \
     pip install .
 
-# gfatools
-
-WORKDIR /tmp
-
-RUN git clone https://github.com/lh3/gfatools && \
-    cd gfatools && make && \
-    mv gfatools /usr/local/bin/
-
-
-# vg
-
-WORKDIR /tmp
-
-RUN wget https://github.com/vgteam/vg/releases/download/v1.36.0/vg && \
-    chmod a+x vg && mv vg /usr/local/bin/
-
-
-# minigraph
-
-WORKDIR /tmp
-
-RUN git clone https://github.com/lh3/minigraph && \
-    cd minigraph && make && mv minigraph /usr/local/bin
-
-# whatshap
-
-RUN pip3 install whatshap
 
 ENV PATH="/usr/local/bin:${PATH}"
 
-RUN pip install statsmodels
