@@ -1,0 +1,5 @@
+install.packages(c("tidyverse","ggplot2","Hmisc","plotrix","png","scales"))
+if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install()
+BiocManager::install(c("GenomicFeatures", "AnnotationDbi","BiocGenerics","GenomicAlignments","bsseq","DESeq2","DiffBind","GenVisR"))

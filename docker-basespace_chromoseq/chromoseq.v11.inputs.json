@@ -1,0 +1,26 @@
+{
+    "ChromoSeq.VEP": "/gscmnt/gc2709/info/production_reference_GRCh38DH/CLE/IDTExome/VEP_cache/",
+    "ChromoSeq.Reference": "/gscmnt/gc2555/spencer/refdata/hg38/all_sequences.fa",
+    "ChromoSeq.ReferenceBED": "/gscmnt/gc2555/spencer/refdata/hg38/all_sequences.fa.bed.gz",
+    "ChromoSeq.ReferenceIndex": "/gscmnt/gc2555/spencer/refdata/hg38/all_sequences.fa.fai",
+    "ChromoSeq.MantaConfig": "/opt/files/configManta.hg38.py.ini",
+
+    "ChromoSeq.Cytobands": "/gscmnt/gc2555/spencer/dhs/projects/chromoseq/hg38_files/hg38.cytoBandIdeo.bed.gz",
+    "ChromoSeq.SVDB": "/gscmnt/gc2555/spencer/dhs/projects/chromoseq/hg38_files/chromoseq_sv_filter.bedpe.gz",
+
+    "ChromoSeq.GenesBed": "/gscmnt/gc2555/spencer/dhs/projects/chromoseq/hg38_files/chromoseq_genes_myeloseq.bed",
+    "ChromoSeq.Translocations": "/gscmnt/gc2555/spencer/dhs/projects/chromoseq/hg38_files/chromoseq_translocations.bedpe",
+    
+    "ChromoSeq.JobGroup": "/dspencer/chromoseq",    
+    "ChromoSeq.chromoseq_docker": "dhspence/docker-basespace_chromoseq:v5",
+    
+    "ChromoSeq.OutputDir": "/gscmnt/gc2555/spencer/dhs/projects/chromoseq/new_annotations/test",
+    "ChromoSeq.Name": "TEST",
+
+    "ChromoSeq.Cram": "/gscmnt/gc2555/spencer/dhs/projects/chromoseq/prospective/Batch10/TWDY-ChrSeq-0044-BM-lib1/TWDY-ChrSeq-0044-BM-lib1.cram",
+    "ChromoSeq.CramIndex": "/gscmnt/gc2555/spencer/dhs/projects/chromoseq/prospective/Batch10/TWDY-ChrSeq-0044-BM-lib1/TWDY-ChrSeq-0044-BM-lib1.cram.crai",
+
+    "ChromoSeq.Manta": "/gscmnt/gc2555/spencer/dhs/projects/chromoseq/new_annotations/TWDY-ChrSeq-0044-BM-lib1.tumorSV.vcf.gz",
+    "ChromoSeq.Segs": "/gscmnt/gc2555/spencer/dhs/projects/chromoseq/new_annotations/TWDY-ChrSeq-0044-BM-lib1.seg.txt"
+}
+
