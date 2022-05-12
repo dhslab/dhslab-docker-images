@@ -1,0 +1,136 @@
+defaults: &defaults
+  docker:
+    - image: circleci/buildpack-deps:xenial-scm
+  working_directory: ~/ENCODE-DCC/hic-pipeline
+  
+machine_defaults: &machine_defaults
+  machine: 
+    image: circleci/classic:latest
+  working_directory: ~/ENCODE-DCC/hic-pipeline
+
+make_tag: &make_tag
+  name: make docker image tag
+  command: |
+    echo "export TAG=quay.io/encode-dcc/${CIRCLE_PROJECT_REPONAME}:${CIRCLE_BRANCH}_${CIRCLE_WORKFLOW_ID}" > ${BASH_ENV}
+
+get_cromwell: &get_cromwell
+  name: get the cromwell 36
+  command: |
+    wget -N -c https://github.com/broadinstitute/cromwell/releases/download/36/cromwell-36.jar
+
+version: 2.1
+jobs:
+  test:
+    <<: *machine_defaults
+    description: Generic testing protocol for wdl tasks
+    parameters:
+      test_name:
+        description: "The name of the test being performed, like hic, align, merge, etc."
+        type: enum
+        enum: ["align", "arrowhead", "bam2pairs", "create_hic", "dedup", "hiccups", "merge", "merge_sort", "hic", "multiple_libraries"]
+      test_type:
+        default: "task"
+        description: "Describes if the test is for a task or for a workflow"
+        type: enum
+        enum: ["task", "workflow"]
+      keys_to_inspect:
+        description: "The key(s) of the output(s) in metadata.json for which md5sum is to be computed, space delimited"
+        type: string
+    steps:
+      - checkout
+      - run: *make_tag
+      - run: *get_cromwell
+      - run:
+          command: |
+            pyenv global 3.5.2
+            source ${BASH_ENV}
+            test/test_task/test.sh test/test_<< parameters.test_type >>/test_<< parameters.test_name >>.wdl test/test_<< parameters.test_type >>/test_<< parameters.test_name >>.json $TAG docker
+            python3 src/compare_md5.py --keys_to_inspect << parameters.keys_to_inspect >> --metadata_json test_<< parameters.test_name >>.metadata.json --reference_json test/test_<< parameters.test_type >>/ref_output/test_<< parameters.test_name >>_output_md5.json --outfile result.json
+            cat result.json
+            python3 -c "import sys; import json; data=json.loads(sys.stdin.read()); sys.exit(int(not data['match_overall']))" < result.json
+
+  build:
+    <<: *defaults
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: *make_tag
+      - run:
+          name: build image
+          command: |
+            source ${BASH_ENV}
+            echo "pulling template!"
+            docker pull quay.io/encode-dcc/hic-pipeline:template
+            docker login -u=${QUAY_ROBOT_USER} -p=${QUAY_ROBOT_USER_TOKEN} quay.io
+            docker build --cache-from quay.io/encode-dcc/hic-pipeline:template --build-arg GIT_COMMIT_HASH=${CIRCLE_SHA1} --build-arg BRANCH=${CIRCLE_BRANCH} --build-arg BUILD_TAG=${TAG} -t $TAG -t quay.io/encode-dcc/hic-pipeline:template -f docker_image/Dockerfile .
+            docker push $TAG
+            docker push quay.io/encode-dcc/hic-pipeline:template
+            docker logout
+
+# Define workflow here
+workflows:
+  version: 2
+  build_workflow:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only:
+                - master
+                - dev-1
+      - test:
+          name: test_align
+          requires:
+            - build
+          test_name: "align"
+          keys_to_inspect: "test_align.collisions test_align.collisions_low_mapq test_align.unmapped test_align.mapq0 test_align.alignable test_align.sort_file test_align.norm_res test_align.stats_sub_result test_align.stats_sub_result_json"
+      - test:
+          name: test_bam2pairs
+          requires:
+            - build
+          test_name: "bam2pairs"
+          keys_to_inspect: "test_bam2pairs.pairs_no_header"
+      - test:
+          name: test_merge_sort
+          requires:
+            - build
+          test_name: "merge_sort"
+          keys_to_inspect: "test_merge_sort.merged"
+      - test:
+          name: test_dedup
+          requires:
+            - build
+          test_name: "dedup"
+          keys_to_inspect: "test_dedup.deduped test_dedup.library_complexity_json test_dedup.stats_json"
+      - test:
+          name: test_merge
+          requires:
+            - build
+          test_name: "merge"
+          keys_to_inspect: "test_merge.merged_no_header"
+      - test:
+          name: arrowhead
+          requires:
+            - build
+          test_name: "arrowhead"
+          keys_to_inspect: "test_arrowhead.arrowhead_out"
+      - test:
+          name: create_hic
+          requires:
+            - build
+          test_name: "create_hic"
+          keys_to_inspect: "test_create_hic.no_header"
+      - test:
+          name: test_hic
+          requires:
+            - build
+          test_name: "hic"
+          test_type: "workflow"
+          keys_to_inspect: "test_hic.library_complexity test_hic.stats test_hic.alignments_stats test_hic.no_header_alignable_sam test_hic.out_pairs test_hic.out_dedup test_hic.no_header_hic_1 test_hic.no_header_hic_30"
+      - test:
+          name: test_multiple_libraries
+          requires:
+            - build
+          test_name: "multiple_libraries"
+          test_type: "workflow"
+          keys_to_inspect: "test_multiple_libraries.no_header_alignable_sam test_multiple_libraries.out_pairs test_multiple_libraries.out_dedup test_multiple_libraries.no_header_hic_1 test_multiple_libraries.no_header_hic_30"

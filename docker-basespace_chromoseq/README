@@ -1,0 +1,48 @@
+Files Chromoseq.v9.wdl, application.new.conf, and LaunchChromoSeqFromCram.sh are for running locally (LSF) at MGI
+
+Chromoseq_basespace.v9.wdl has all runtime attributes stripped, since the basespace cromwell workflow currently operates on a single node and is not configured to launch each job in a new container (this would waste resources- the current container already has everything each task needs to run)
+
+launch_and_monitor_chromoseq.pl is for launching basespace from MGI
+
+Instructions on running basespace and other information is written in https://confluence.ris.wustl.edu/display/CI/Basespace+SOP
+
+forms & callbacks.js are configuration files from basespace that control the app input parameters and the command line instructions used to launch the app- these must be manually updated
+current versions were last modified on 4/4/19
+these can be accessed by logging in to the MGI organization and going to https://developer.basespace.illumina.com/apps/6984978/forms/revisions
+
+
+launch_and_monitor_chromoseq.pl: finding constants
+
+RefId
+This was originally generated in project full_workflow_test1, analysis DRAGEN Reference Builder 03/28/2019 10:51:57
+Analysis url: https://basespace.illumina.com/analyses/170755135?projectId=123592472
+bs appsession get -i 170755135
+bs list appresults --project-name=full_workflow_test1 --filter-field=AppSession.Id --filter-term=170755135
++-----------+---------------+----------------------------------------------+
+|    Id     |     Name      |               AppSession.Name                |
++-----------+---------------+----------------------------------------------+
+| 213691478 | all_sequences | DRAGEN Reference Builder 03/28/2019 10:51:57 |
++-----------+---------------+----------------------------------------------+
+bs content appresult --id=213691478
++-------------+----------------------+
+|     Id      |       FilePath       |
++-------------+----------------------+
+| 14321367413 | all_sequences.v7.tar |
++-------------+----------------------+
+The above ID is the value used in the workflow
+
+ref_fasta
+https://basespace.illumina.com/analyses/173645472?projectId=123592472
+bs list appresults --project-name=full_workflow_test1 --filter-field=AppSession.Id --filter-term=173645472
++-----------+---------------+-----------------+
+|    Id     |     Name      | AppSession.Name |
++-----------+---------------+-----------------+
+| 216723517 | all_sequences | all_sequences   |
++-----------+---------------+-----------------+
+bs content appresult --id=216723517
++-------------+------------------+
+|     Id      |     FilePath     |
++-------------+------------------+
+| 14477433053 | all_sequences.fa |
++-------------+------------------+
+
