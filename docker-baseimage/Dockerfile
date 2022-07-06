@@ -43,6 +43,8 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     evince \
     libnss-sss \
     bedtools \
+    default-jdk \
+    default-jre \
     && apt-get clean all
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
