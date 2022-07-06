@@ -45,6 +45,9 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     bedtools \
     && apt-get clean all
 
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+    
 RUN pip install numpy && \
     pip install cruzdb && \
     pip install cython && \
@@ -56,10 +59,11 @@ RUN pip install numpy && \
     pip install pysam && \
     pip install statsmodels && \
     pip install pyranges && \
-    pip install pyyaml
+    pip install pyyaml && \
+    pip install gtfparse && \
+    pip install globus-cli && \
+    pip install miniwdl
     
-RUN ln -s $(which python3) /usr/local/bin/python
-
 RUN cd /opt/ && \
     curl https://raw.github.com/miyagawa/cpanminus/master/cpanm > cpanm && \
     chmod +x cpanm && \
