@@ -45,6 +45,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     bedtools \
     default-jdk \
     default-jre \
+    git-lfs \
     && apt-get clean all
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
