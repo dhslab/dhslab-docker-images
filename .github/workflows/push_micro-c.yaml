@@ -3,7 +3,7 @@ name: push micro-c
 on:
   push:
     paths:
-      - '*/micro-c/Dockerfile'
+      - '**/micro-c/Dockerfile'
 
 jobs:
   push-micro-c-image:
