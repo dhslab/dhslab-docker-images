@@ -5,6 +5,9 @@ on:
     paths:
       - '**/Dockerfile'
 
+env:
+  directory: ${{ on.push.paths }}
+
 jobs:
   get-container-name:
     runs-on: ubuntu-latest
@@ -12,8 +15,6 @@ jobs:
       container_name: ${{ steps.parse-string.outputs.container_name }}
     steps:
       - id: parse-string
-        env:
-          directory: ${{ on.push.paths }}
         run:
           container_name=${${{ env.directory }}%/Dockerfile}
           container_name=${container_name#*/}
