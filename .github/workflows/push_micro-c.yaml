@@ -18,9 +18,13 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract container name
+      run: echo $on.push.paths
+      shell: bash
 
-    - name: Build the micro-c Docker image
-      run: |
-        docker build ./micro-c --tag ghcr.io/dhslab/micro-c:latest
-        docker run ghcr.io/dhslab/micro-c:latest
-        docker push ghcr.io/dhslab/micro-c:latest
+    #- name: Build the micro-c Docker image
+    #  run: |
+    #    docker build ./micro-c --tag ghcr.io/dhslab/micro-c:latest
+    #    docker run ghcr.io/dhslab/micro-c:latest
+    #    docker push ghcr.io/dhslab/micro-c:latest
