@@ -20,7 +20,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Extract container name
-      run: echo $(on.push.paths)
+      run: echo $PATH
       shell: bash
 
     #- name: Build the micro-c Docker image
