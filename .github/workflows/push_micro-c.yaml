@@ -1,0 +1,26 @@
+name: push micro-c
+
+on:
+  push:
+    paths:
+      dhslab-docker-images/micro-c/Dockerfile
+
+jobs:
+  push-micro-c-image:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build the micro-c Docker image
+      run: |
+        docker build . --tag ghcr.io/dhslab/micro-c:latest
+        docker run ghcr.io/dhslab/micro-c:latest
+        docker push ghcr.io/dhslab/micro-c:latest
