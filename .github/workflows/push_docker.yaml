@@ -12,8 +12,10 @@ jobs:
       container_name: ${{ steps.parse-string.outputs.container_name }}
     steps:
       - id: parse-string
+        env:
+          directory: ${{ on.push.paths }}
         run:
-          container_name=${${{ on.push.paths }}%/Dockerfile}
+          container_name=${${{ env.directory }}%/Dockerfile}
           container_name=${container_name#*/}
           echo ::set-output name=container_name::"$container_name"
 
