@@ -16,6 +16,7 @@ jobs:
     steps:
       - id: parse-string
         run:
+          echo ${{ env.directory }}
           container_name=${${{ env.directory }}%/Dockerfile}
           container_name=${container_name#*/}
           echo ::set-output name=container_name::"$container_name"
