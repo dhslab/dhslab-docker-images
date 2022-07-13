@@ -21,6 +21,6 @@ jobs:
 
     - name: Build the micro-c Docker image
       run: |
-        docker build . --tag ghcr.io/dhslab/micro-c:latest
+        docker build ./micro-c --tag ghcr.io/dhslab/micro-c:latest
         docker run ghcr.io/dhslab/micro-c:latest
         docker push ghcr.io/dhslab/micro-c:latest
