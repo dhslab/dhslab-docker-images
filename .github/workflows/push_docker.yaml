@@ -4,9 +4,9 @@ on:
   push:
     paths:
       - '**/Dockerfile'
-
+      
 env:
-  directory: ${{ on.push.paths }}
+  directory: ${{ github.event_name }}
 
 jobs:
   get-container-name:
