@@ -12,7 +12,6 @@ jobs:
       container_name: ${{ steps.parse-string.outputs.container_name }}
     steps:
       - id: parse-string
-      - name: Extract container name
         run:
           container_name=${${{ on.push.paths }}%/Dockerfile}
           container_name=${container_name#*/}
