@@ -6,7 +6,7 @@ on:
       - '**/Dockerfile'
       
 env:
-  directory: ${{ github.event.commits }}
+  directory: ${{ github.event.commits[][sha] }}
 
 jobs:
   get-container-name:
