@@ -43,7 +43,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build Docker image
+    - name: Build and Push Docker image
       run: |
         docker build ./${{needs.get-container-name.outputs.container_name}} --tag ghcr.io/dhslab/${{needs.get-container-name.outputs.container_name}}:latest
         docker run ghcr.io/dhslab/${{needs.get-container-name.outputs.container_name}}:latest
