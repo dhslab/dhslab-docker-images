@@ -15,7 +15,7 @@ jobs:
         run:
           dirname=${git diff-tree --no-commit-id -r ${{ github.sha }}}
           echo $dirname
-          container_name=${dirname%/Dockerfile}
+          container_name=${$dirname%/Dockerfile}
           container_name=${container_name#*/}
           echo ::set-output name=container_name::"$container_name"
 
