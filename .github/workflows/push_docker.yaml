@@ -4,9 +4,6 @@ on:
   push:
     paths:
       - '**/Dockerfile'
-      
-env:
-  directory: ${{ github.event.commits[0].paths }}
 
 jobs:
   get-container-name:
@@ -16,8 +13,9 @@ jobs:
     steps:
       - id: parse-string
         run:
-          echo ${{ env.directory }}
-          container_name=${${{ env.directory }}%/Dockerfile}
+          dirname=${git diff-tree --no-commit-id -r ${{ github.sha }}}
+          echo $dirname
+          container_name=${dirname%/Dockerfile}
           container_name=${container_name#*/}
           echo ::set-output name=container_name::"$container_name"
 
