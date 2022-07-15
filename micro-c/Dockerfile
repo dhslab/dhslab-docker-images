@@ -111,7 +111,7 @@ ENV PBGZIP_INSTALL_DIR=/opt/pbgzip
 
 WORKDIR /tmp
 RUN git clone https://github.com/nh13/pbgzip.git && \
-    cd pbgzip/ && \
+    cd ./pbgzip/ && \
     sh autogen.sh && \
     ./configure --prefix=$PBGZIP_INSTALL_DIR && \
     make && \
