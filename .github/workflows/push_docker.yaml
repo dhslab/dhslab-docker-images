@@ -13,7 +13,7 @@ jobs:
     steps:
       - id: parse-string
         run:
-          dirname=${git diff-tree --no-commit-id -r ${{ github.sha }}}
+          dirname=$(git diff-tree --no-commit-id -r ${{ github.sha }})
           echo $dirname
           container_name=${$dirname%/Dockerfile}
           container_name=${container_name#*/}
