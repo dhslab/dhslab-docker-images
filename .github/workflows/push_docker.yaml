@@ -1,0 +1,50 @@
+name: push container to ghcr.io
+
+on:
+  push:
+    paths:
+      - '**/Dockerfile'
+
+jobs:
+  get-container-name:
+    runs-on: ubuntu-latest  # windows-latest | macos-latest
+    name: Get container name
+    outputs: 
+      container_name: ${{ steps.container-name.outputs.container_name }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v23.1
+
+      - name: Get container name
+        id: container-name
+        run: |
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            container_name=${file%/Dockerfile}
+            container_name=${container_name#*/}
+            echo ::set-output name=container_name::"$container_name"
+          done
+
+  push-docker-image:
+    runs-on: ubuntu-latest
+    needs: get-container-name
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and Push Docker image
+      run: |
+        docker build ./${{needs.get-container-name.outputs.container_name}} --tag ghcr.io/dhslab/${{needs.get-container-name.outputs.container_name}}:latest
+        docker run ghcr.io/dhslab/${{needs.get-container-name.outputs.container_name}}:latest
+        docker push ghcr.io/dhslab/${{needs.get-container-name.outputs.container_name}}:latest
