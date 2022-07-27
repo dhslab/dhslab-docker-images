@@ -73,6 +73,8 @@ RUN apt-get update -y && apt-get install -y \
     bedtools \
     seqtk \
     cmake
+    
+RUN pip install modbamtools
 
 ##############
 #HTSlib 1.13#
