@@ -73,8 +73,6 @@ RUN apt-get update -y && apt-get install -y \
     bedtools \
     seqtk \
     cmake
-    
-RUN pip install modbamtools
 
 ##############
 #HTSlib 1.13#
@@ -183,4 +181,5 @@ RUN pip3 install whatshap
 
 ENV PATH="/usr/local/bin:${PATH}"
 
-RUN pip install statsmodels
+RUN pip install statsmodels && \
+    pip install modbamtools
