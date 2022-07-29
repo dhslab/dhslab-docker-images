@@ -15,4 +15,3 @@ RUN set -e \
       && pip install -U --no-cache-dir pip numpy \
       && pip install -U --no-cache-dir macs2 \
       && rm -f /tmp/get-pip.py
-
