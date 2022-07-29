@@ -44,4 +44,3 @@ WORKDIR /usr/local/
 RUN git clone --recursive https://github.com/STAR-Fusion/STAR-Fusion.git
 
 RUN ln -s /usr/local/STAR-Fusion/STAR-Fusion /usr/local/bin/
-
