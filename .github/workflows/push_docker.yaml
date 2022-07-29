@@ -33,6 +33,8 @@ jobs:
                 JSON="$JSON$add_string"
               fi
             fi
+          done
+          
           if [[ $JSON == *, ]]; then
             JSON="${JSON%?}"
           fi
