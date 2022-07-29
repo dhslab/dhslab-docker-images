@@ -29,4 +29,3 @@ RUN cnvkit.py version
 # CMD ["--help"]
 
 CMD ["bash"]
-
