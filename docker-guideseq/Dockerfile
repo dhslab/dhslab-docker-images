@@ -17,5 +17,3 @@ WORKDIR /opt/
 RUN git clone --recursive https://github.com/aryeelab/guideseq.git && \
     cd guideseq && \
     pip install -r requirements.txt
-
-
