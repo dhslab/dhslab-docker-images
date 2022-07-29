@@ -49,7 +49,7 @@ jobs:
 
     - name: Build and Push Docker image
       run: |
-        for container-name in ${{ needs.get-container-names.outputs.container_names }}; do
+        for container-name in (${{ needs.get-container-names.outputs.container_names }}); do
           docker build ./${container-name} --tag ghcr.io/dhslab/${container-name}:latest
           docker run ghcr.io/dhslab/${container-name}:latest
           docker push ghcr.io/dhslab/${container-name}:latest
