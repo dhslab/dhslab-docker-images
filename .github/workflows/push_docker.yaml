@@ -30,7 +30,7 @@ jobs:
               container_name=${container_name#*/}
               fArray+=(container_name)
             fi
-            echo ::set-output name=container_names::"$fArray"
+            echo ::set-output name=container_names::"$fArray[@]"
           done
 
   push-docker-image:
