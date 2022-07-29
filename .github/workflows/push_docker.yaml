@@ -24,7 +24,8 @@ jobs:
         id: set-matrix
         run: |
           JSON="{\"include\":["
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do 
             if [[ $file == *"Dockerfile"* ]]; then
               name=${file%/Dockerfile}
               name=${name#*/}
