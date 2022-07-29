@@ -31,6 +31,3 @@ RUN ln -s /opt/vep/ensembl-vep/vep /usr/bin/variant_effect_predictor.pl
 COPY add_annotations_to_table_helper.py /usr/local/bin/add_annotations_to_table_helper.py
 
 RUN chmod a+wrx /usr/local/bin/add_annotations_to_table_helper.py
-
-
-
