@@ -11,9 +11,3 @@ RUN cd /opt/ && \
     cmake .. && \
     make && \
     cp regtools /usr/local/bin/
-
-
-
-
-
-

@@ -123,4 +123,3 @@ RUN wget https://github.com/vgteam/vg/releases/download/v1.36.0/vg && \
     chmod a+x vg && mv vg /usr/local/bin/
 
 ENV PATH="/usr/local/bin:${PATH}"
-

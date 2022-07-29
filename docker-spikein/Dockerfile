@@ -25,4 +25,3 @@ RUN wget https://github.com/ComputationalSystemsBiology/EoulsanDockerFiles/raw/m
 
 # perl summarization script
 ADD ProcessSpikein.pl /usr/local/bin/
-

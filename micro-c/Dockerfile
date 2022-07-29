@@ -119,4 +119,3 @@ RUN git clone https://github.com/nh13/pbgzip.git && \
     ln -s /opt/pbgzip/bin/* /usr/local/bin/ && \
     cd / && \
     rm -rf /tmp/pbgzip*
-
