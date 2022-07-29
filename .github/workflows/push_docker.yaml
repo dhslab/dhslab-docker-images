@@ -28,7 +28,7 @@ jobs:
             if [[ $file == *"Dockerfile"* ]]; then
               container_name=${file%/Dockerfile}
               container_name=${container_name#*/}
-              fArray+=(container_name)
+              fArray+=(${container_name})
             fi
             echo ::set-output name=container_names::"${fArray[@]}"
           done
