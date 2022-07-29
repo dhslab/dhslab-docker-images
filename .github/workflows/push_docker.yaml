@@ -23,7 +23,7 @@ jobs:
       - name: Get container names
         id: container-names
         run: |
-          echo "::set-output name=container_names::{\"container-names\": \"${{ steps.changed-files.outputs.all_changed_files }}\"}"
+          echo "::set-output name=container_names::toJSON({\"container-names\": \"${{ steps.changed-files.outputs.all_changed_files }}\"})"
 
   push-docker-image:
     needs: get-container-names
