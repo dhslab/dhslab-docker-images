@@ -252,4 +252,3 @@ RUN conda install gh --channel conda-forge
 
 RUN mkdir /tmp/bin
 ENV PATH=/storage1/fs1/dspencer/Active/spencerlab/bin:/bin:/usr/bin:/usr/local/bin:/opt/conda/bin/:${PATH}
-

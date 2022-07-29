@@ -6,3 +6,4 @@ MAINTAINER David H. Spencer <dspencer@wustl.edu>
 LABEL description="Multiqc with files"
 
 ENTRYPOINT []
+
