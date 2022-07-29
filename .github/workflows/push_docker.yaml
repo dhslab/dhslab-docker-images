@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: Get container name
     outputs: 
-      container_names: ${{ steps.container-name.outputs.container_names }}
+      container_names: ${{ steps.container-names.outputs.container_names }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -30,7 +30,7 @@ jobs:
               container_name=${container_name#*/}
               fArray+=(container_name)
             fi
-            echo ::set-output name=container_names::"$fArray[@]"
+            echo ::set-output name=container_names::"${fArray[@]}"
           done
 
   push-docker-image:
