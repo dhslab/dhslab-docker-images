@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: Get container name
     outputs: 
-      container_names: ${{ steps.container-names.outputs.container_names }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -21,7 +21,7 @@ jobs:
         uses: tj-actions/changed-files@v23.1
 
       - name: Get container names
-        id: container-names
+        id: set-matrix
         run: |
           JSON="{\"include\":["
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
@@ -38,13 +38,13 @@ jobs:
           fi
           JSON="$JSON]}"
           echo $JSON
-          echo "::set-output name=container_names::$( echo "$JSON" )"
+          echo "::set-output name=matrix::$( echo "$JSON" )"
 
   push-docker-image:
     needs: get-container-names
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJSON(needs.get-container-names.outputs.container_names) }}
+      matrix: ${{ fromJSON(needs.get-container-names.outputs.matrix) }}
     steps:
     - uses: actions/checkout@v2
 
