@@ -47,6 +47,7 @@ jobs:
     needs: get-container-names
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix: ${{ fromJSON(needs.get-container-names.outputs.matrix) }}
     steps:
     - uses: actions/checkout@v2
