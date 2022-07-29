@@ -23,20 +23,14 @@ jobs:
       - name: Get container names
         id: container-names
         run: |
-          fArray=()
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            if [[ $file == *"Dockerfile"* ]]; then
-              container_name=${file%/Dockerfile}
-              container_name=${container_name#*/}
-              fArray+=(${container_name})
-            fi
-            echo ::set-output name=container_names::"${fArray[@]}"
-          done
+          echo "::set-output name=container_names::{\"container-names\": \"${{ steps.changed-files.outputs.all_changed_files }}\"}"
 
   push-docker-image:
-    runs-on: ubuntu-latest
     needs: get-container-names
-
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container-name: ${{ fromJSON(needs.get-container-names.outputs.container_names) }}
     steps:
     - uses: actions/checkout@v2
 
@@ -49,7 +43,6 @@ jobs:
 
     - name: Build and Push Docker image
       run: |
-        for container-name in (${{ needs.get-container-names.outputs.container_names }}); do
-          docker build ./${container-name} --tag ghcr.io/dhslab/${container-name}:latest
-          docker run ghcr.io/dhslab/${container-name}:latest
-          docker push ghcr.io/dhslab/${container-name}:latest
+        docker build ./${{ matrix.container-name }} --tag ghcr.io/dhslab/${{ matrix.container-name }}:latest
+        docker run ghcr.io/dhslab/${{ matrix.container-name }}:latest
+        docker push ghcr.io/dhslab/${{ matrix.container-name }}:latest
