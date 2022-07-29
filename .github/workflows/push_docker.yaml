@@ -23,14 +23,28 @@ jobs:
       - name: Get container names
         id: container-names
         run: |
-          echo "::set-output name=container_names::toJSON({\"container-names\": \"${{ steps.changed-files.outputs.all_changed_files }}\"})"
+          JSON="{\"include\":["
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [[ $file == *"Dockerfile"* ]]; then
+              name=${file%/Dockerfile}
+              name=${name#*/}
+              add_string="{\"container-name\": \"$name\"},"
+              if [[ "$JSON" != *"$add_string"* ]]; then
+                JSON="$JSON$add_string"
+              fi
+            fi
+          if [[ $JSON == *, ]]; then
+            JSON="${JSON%?}"
+          fi
+          JSON="$JSON]}"
+          echo $JSON
+          echo "::set-output name=container_names::$( echo "$JSON" )"
 
   push-docker-image:
     needs: get-container-names
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        container-name: ${{ fromJSON(needs.get-container-names.outputs.container_names) }}
+      matrix: ${{ fromJSON(needs.get-container-names.outputs.container_names) }}
     steps:
     - uses: actions/checkout@v2
 
