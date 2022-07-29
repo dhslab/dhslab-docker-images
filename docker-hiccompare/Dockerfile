@@ -10,5 +10,3 @@ RUN R -f /tmp/rpackages.R
 WORKDIR /opt
 
 RUN git clone https://github.com/ay-lab/selfish
-
-

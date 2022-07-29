@@ -122,3 +122,4 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.13/samtools-1.
 
 
 ENV PATH=/usr/bin/:/bin/:/usr/local/bin/:/opt/bin/:/opt/conda/bin
+

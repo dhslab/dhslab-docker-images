@@ -6,6 +6,3 @@ WORKDIR /opt/
 RUN wget http://opengene.org/fastp/fastp && \
     chmod a+x ./fastp && \
     mv ./fastp /usr/local/bin/
-
-
-

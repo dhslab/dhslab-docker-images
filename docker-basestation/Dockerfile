@@ -10,5 +10,3 @@ RUN wget "https://api.bintray.com/content/basespace/BaseSpaceCLI-EarlyAccess-BIN
 
 ENV BASESPACE_ACCESS_TOKEN=d546e5027af4414b8a0da61a73a4aff4
 ENV BASESPACE_API_SERVER=https://api.basespace.illumina.com
-
-

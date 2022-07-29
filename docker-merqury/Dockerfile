@@ -146,4 +146,3 @@ RUN git clone https://github.com/eldariont/svim-asm.git && \
 
 
 ENV PATH="/usr/local/bin:${PATH}"
-

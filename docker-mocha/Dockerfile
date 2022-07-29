@@ -69,3 +69,4 @@ RUN wget --no-check-certificate -O impute5_v1.1.4.zip https://www.dropbox.com/sh
     wget --no-check-certificate -P /usr/local/bin http://faculty.washington.edu/browning/beagle/bref3.18May20.d20.jar
 
 RUN mkdir -p /usr/local/libexec/bcftools && /bin/cp bcftools/plugins/*.so /usr/local/libexec/bcftools/
+
