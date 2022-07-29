@@ -30,5 +30,3 @@ RUN apt-get update && apt-get install cmake \
     cmake . && \
     make && \
     cp bin/* /usr/local/bin/
-
-
