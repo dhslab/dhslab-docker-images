@@ -6,11 +6,11 @@ on:
       - '**/Dockerfile'
 
 jobs:
-  get-container-name:
+  get-container-names:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: Get container name
     outputs: 
-      container_name: ${{ steps.container-name.outputs.container_name }}
+      container_names: ${{ steps.container-name.outputs.container_names }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -20,18 +20,22 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v23.1
 
-      - name: Get container name
-        id: container-name
+      - name: Get container names
+        id: container-names
         run: |
+          fArray=()
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            container_name=${file%/Dockerfile}
-            container_name=${container_name#*/}
-            echo ::set-output name=container_name::"$container_name"
+            if [[ $file == *"Dockerfile"* ]]; then
+              container_name=${file%/Dockerfile}
+              container_name=${container_name#*/}
+              fArray+=container_name
+            fi
+            echo ::set-output name=container_names::"$fArray"
           done
 
   push-docker-image:
     runs-on: ubuntu-latest
-    needs: get-container-name
+    needs: get-container-names
 
     steps:
     - uses: actions/checkout@v2
@@ -45,6 +49,7 @@ jobs:
 
     - name: Build and Push Docker image
       run: |
-        docker build ./${{needs.get-container-name.outputs.container_name}} --tag ghcr.io/dhslab/${{needs.get-container-name.outputs.container_name}}:latest
-        docker run ghcr.io/dhslab/${{needs.get-container-name.outputs.container_name}}:latest
-        docker push ghcr.io/dhslab/${{needs.get-container-name.outputs.container_name}}:latest
+        for container-name in ${{ needs.get-container-names.outputs.container_names[@] }}; do
+          docker build ./${container-name} --tag ghcr.io/dhslab/${container-name}:latest
+          docker run ghcr.io/dhslab/${container-name}:latest
+          docker push ghcr.io/dhslab/${container-name}:latest
