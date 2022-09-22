@@ -72,7 +72,8 @@ RUN apt-get update -y && apt-get install -y \
     libcurl4-openssl-dev \
     bedtools \
     seqtk \
-    cmake
+    cmake \
+    autoconf
 
 ##############
 #HTSlib 1.13#
@@ -165,6 +166,7 @@ WORKDIR /tmp
 
 RUN git clone https://github.com/twolinin/longphase.git && \
     cd longphase && \
+    autoreconf -i && \
     ./configure --prefix=/usr/local/bin && \
     make -j 4 && \
     make install
