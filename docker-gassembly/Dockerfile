@@ -165,7 +165,7 @@ WORKDIR /tmp
 
 RUN git clone https://github.com/twolinin/longphase.git && \
     cd longphase && \
-    autoreconf -i
+    autoreconf -i && \
     ./configure --prefix=/usr/local/bin && \
     make -j 4 && \
     make install
