@@ -158,8 +158,18 @@ WORKDIR /tmp
 RUN git clone https://github.com/lh3/gfatools && \
     cd gfatools && make && \
     mv gfatools /usr/local/bin/
+    
+# longphase
 
+WORKDIR /tmp
 
+RUN git clone https://github.com/twolinin/longphase.git && \
+    cd longphase && \
+    autoreconf -i
+    ./configure --prefix=/usr/local/bin && \
+    make -j 4 && \
+    make install
+    
 # vg
 
 WORKDIR /tmp
