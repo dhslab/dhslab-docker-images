@@ -58,7 +58,8 @@ RUN pip install numpy && \
     pip install pysam && \
     pip install statsmodels && \
     pip install pyranges && \
-    pip install pyyaml
+    pip install pyyaml && \
+    pip install deeptools
     
 RUN ln -s $(which python3) /usr/local/bin/python
 
