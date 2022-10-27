@@ -1,0 +1,66 @@
+name: push container to ghcr.io
+
+on:
+  push:
+    paths:
+      - '**/Dockerfile'
+
+jobs:
+  get-container-names:
+    runs-on: ubuntu-latest  # windows-latest | macos-latest
+    name: Get container name
+    outputs: 
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v23.1
+
+      - name: Get container names
+        id: set-matrix
+        run: |
+          JSON="{\"include\":["
+          
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do 
+            if [[ $file == *"Dockerfile"* ]]; then
+              name=${file%/Dockerfile}
+              name=${name#*/}
+              add_string="{\"container-name\": \"$name\"},"
+              if [[ "$JSON" != *"$add_string"* ]]; then
+                JSON="$JSON$add_string"
+              fi
+            fi
+          done
+          
+          if [[ $JSON == *, ]]; then
+            JSON="${JSON%?}"
+          fi
+          JSON="$JSON]}"
+          echo $JSON
+          echo "::set-output name=matrix::$( echo "$JSON" )"
+  push-docker-image:
+    needs: get-container-names
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.get-container-names.outputs.matrix) }}
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and Push Docker image
+      run: |
+        docker build ./${{ matrix.container-name }} --tag ghcr.io/dhslab/${{ matrix.container-name }}:latest
+        docker run ghcr.io/dhslab/${{ matrix.container-name }}:latest
+        docker push ghcr.io/dhslab/${{ matrix.container-name }}:latest
+        
