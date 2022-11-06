@@ -75,6 +75,13 @@ RUN apt-get update -y && apt-get install -y \
     cmake \
     autoconf
 
+WORKDIR /tmp
+
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh && \
+    bash Miniconda3-py39_4.12.0-Linux-x86_64.sh
+    
+RUN conda install -c bioconda graphaligner
+
 ##############
 #HTSlib 1.13#
 ##############
@@ -114,34 +121,6 @@ RUN cd /opt/ && \
     cd minimap2 && make && \
     cp minimap2 /usr/local/bin/
 
-# merquery
- 
-WORKDIR /tmp
-
-RUN wget https://github.com/marbl/meryl/releases/download/v1.3/meryl-1.3.Linux-amd64.tar.xz && \
-    tar -xJf meryl-1.3.*.tar.xz && \
-    cd meryl-1.3/bin && \
-    mv * /usr/local/bin/
-
-WORKDIR /tmp
-
-RUN wget https://github.com/marbl/merqury/archive/v1.3.tar.gz && \
-    tar -zxvf v1.3.tar.gz && \
-    cd merqury-1.3 && \
-    mv * /usr/local/bin
-
-
-# mummer4
-
-WORKDIR /tmp
-
-RUN wget https://github.com/mummer4/mummer/releases/download/v4.0.0rc1/mummer-4.0.0rc1.tar.gz && \
-    tar -zxvf mummer-4.0.0rc1.tar.gz && \
-    cd mummer-4.0.0rc1 && \
-    ./configure --prefix=/usr/local/bin && \
-    make && \
-    make install
-
 
 # svim-asm
 
@@ -159,23 +138,12 @@ WORKDIR /tmp
 RUN git clone https://github.com/lh3/gfatools && \
     cd gfatools && make && \
     mv gfatools /usr/local/bin/
-    
-# longphase
 
-WORKDIR /tmp
-
-RUN git clone https://github.com/twolinin/longphase.git && \
-    cd longphase && \
-    autoreconf -i && \
-    ./configure --prefix=/usr/local/bin && \
-    make -j 4 && \
-    make install
-    
 # vg
 
 WORKDIR /tmp
 
-RUN wget https://github.com/vgteam/vg/releases/download/v1.36.0/vg && \
+RUN wget https://github.com/vgteam/vg/releases/download/v1.43.0/vg && \
     chmod a+x vg && mv vg /usr/local/bin/
 
 
