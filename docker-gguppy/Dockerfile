@@ -1,10 +1,12 @@
-FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
+FROM nvidia/cuda:11.6.0-base-ubuntu20.04
 
 # File Author / Maintainer
-MAINTAINER Laurent Jourdren <jourdren@biologie.ens.fr>
+MAINTAINER David Spencer <dspencerlab@gmail.com>
+
+LABEL Image with Guppy ONT basecaller and tools
 
 ARG PACKAGE_VERSION=6.4.2
-ARG BUILD_PACKAGES="wget apt-transport-https"
+ARG BUILD_PACKAGES="wget apt-transport-https tzdata"
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt update && \
@@ -16,3 +18,8 @@ RUN apt update && \
     apt-get autoremove --purge --yes && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+#set timezone to CDT
+RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
+RUN echo "America/Chicago" > /etc/timezone
+RUN dpkg-reconfigure --frontend noninteractive tzdata
