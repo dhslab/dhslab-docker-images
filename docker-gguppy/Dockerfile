@@ -5,12 +5,21 @@ MAINTAINER David Spencer <dspencerlab@gmail.com>
 
 LABEL Image with Guppy ONT basecaller and tools
 
-ARG PACKAGE_VERSION=6.4.2
-ARG BUILD_PACKAGES="wget apt-transport-https tzdata"
 ARG DEBIAN_FRONTEND=noninteractive
 
+#some basic tools
+RUN apt-get update && apt-get install -y --no-install-recommends locales tzdata wget apt-transport-https && \
+    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
+    locale-gen en_US.UTF-8 && \
+    LC_ALL=en_US.UTF-8 && \
+    LANG=en_US.UTF-8 && \
+    /usr/sbin/update-locale LANG=en_US.UTF-8 && \
+    TERM=xterm
+
+ARG PACKAGE_VERSION=6.4.2
+
 RUN apt update && \
-    apt install --yes $BUILD_PACKAGES libnvidia-compute-460-server && \ 
+    apt install --yes libnvidia-compute-460-server && \ 
     cd /tmp && \
     wget -q https://mirror.oxfordnanoportal.com/software/analysis/ont_guppy_${PACKAGE_VERSION}-1~bionic_amd64.deb && \
     apt install --yes /tmp/ont_guppy_${PACKAGE_VERSION}-1~bionic_amd64.deb && \
@@ -23,3 +32,4 @@ RUN apt update && \
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
+
