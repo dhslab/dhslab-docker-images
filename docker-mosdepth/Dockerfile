@@ -1,4 +1,4 @@
-FROM dhspence/docker-baseimage
+FROM ubuntu:20.04
 MAINTAINER David Spencer <dspencer@wustl.edu>
 
 LABEL Basic image with conda and mosdepth
@@ -42,4 +42,3 @@ RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 #     The above /etc/localtime is not enough.
 RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
-
