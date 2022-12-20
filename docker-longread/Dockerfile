@@ -146,9 +146,12 @@ RUN pip install statsmodels && \
     pip install modbamtools
 
 ENV CONDA_DIR /opt/conda
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-    /bin/bash ~/miniconda.sh -b -p /opt/conda
+#RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+#    /bin/bash ~/miniconda.sh -b -p /opt/conda
+
+RUN wget -O Mambaforge.sh  "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh" && \
+    bash Miniforge3.sh -b -p "/opt/conda"
 
 ENV PATH=$CONDA_DIR/bin:$PATH
 
-RUN conda install -c bioconda -c conda-forge -c epi2melabs modbam2bed
+RUN mamba create -n modbam2bed -c bioconda -c conda-forge -c epi2melabs modbam2bed
