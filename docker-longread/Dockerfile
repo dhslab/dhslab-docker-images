@@ -142,11 +142,10 @@ RUN git clone https://github.com/lh3/minigraph && \
 
 RUN pip3 install whatshap ccsmeth
 
-ENV PATH="/usr/local/bin:${PATH}"
-
 RUN pip install statsmodels && \
     pip install modbamtools
 
-RUN conda install mamba -n base -c conda-forge
+RUN git clone --recursive https://github.com/epi2me-labs/modbam2bed.git && \
+    make modbam2bed && \
+    mv modbam2bed /usr/local/bin
 
-RUN mamba create -n modbam2bed -c bioconda -c conda-forge -c epi2melabs modbam2bed
