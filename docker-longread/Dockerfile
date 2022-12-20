@@ -145,7 +145,10 @@ RUN pip3 install whatshap ccsmeth
 RUN pip install statsmodels && \
     pip install modbamtools
 
-RUN git clone --recursive https://github.com/epi2me-labs/modbam2bed.git && \
-    make modbam2bed && \
-    mv modbam2bed /usr/local/bin
+ENV CONDA_DIR /opt/conda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda
 
+ENV PATH=$CONDA_DIR/bin:$PATH
+
+RUN conda install -c bioconda -c conda-forge -c epi2melabs modbam2bed
