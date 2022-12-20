@@ -150,7 +150,7 @@ ENV CONDA_DIR /opt/conda
 #    /bin/bash ~/miniconda.sh -b -p /opt/conda
 
 RUN wget -O Mambaforge.sh  "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh" && \
-    bash Miniforge3.sh -b -p "/opt/conda"
+    bash Mambaforge.sh -b -p "/opt/conda"
 
 ENV PATH=$CONDA_DIR/bin:$PATH
 
