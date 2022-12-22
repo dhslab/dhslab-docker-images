@@ -140,7 +140,7 @@ RUN git clone https://github.com/lh3/minigraph && \
 
 # whatshap
 
-RUN pip3 install whatshap ccsmeth
+RUN pip3 install whatshap Liftoff
 
 RUN pip install statsmodels && \
     pip install modbamtools
@@ -155,3 +155,6 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 RUN conda init bash
 
 RUN mamba create -n modbam2bed -c bioconda -c conda-forge -c epi2melabs modbam2bed && mamba clean --all
+
+RUN conda activate modbam2bed
+
