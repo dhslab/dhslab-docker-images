@@ -156,5 +156,3 @@ RUN conda init bash
 
 RUN mamba create -n modbam2bed -c bioconda -c conda-forge -c epi2melabs modbam2bed && mamba clean --all
 
-RUN conda activate modbam2bed
-
