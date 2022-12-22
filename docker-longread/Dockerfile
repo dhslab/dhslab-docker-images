@@ -138,12 +138,6 @@ WORKDIR /tmp
 RUN git clone https://github.com/lh3/minigraph && \
     cd minigraph && make && mv minigraph /usr/local/bin
 
-# whatshap
-
-RUN pip3 install statsmodels && \
-    pip3 install modbamtools && \
-    pip3 install Liftoff
-
 ENV CONDA_DIR /opt/conda
 
 RUN wget -O Mambaforge.sh  "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh" && \
@@ -155,3 +149,6 @@ RUN conda init bash
 
 RUN mamba create -n modbam2bed -c bioconda -c conda-forge -c epi2melabs modbam2bed && mamba clean --all
 
+RUN pip3 install statsmodels && \
+    pip3 install modbamtools && \
+    pip3 install Liftoff
