@@ -140,10 +140,9 @@ RUN git clone https://github.com/lh3/minigraph && \
 
 # whatshap
 
-RUN pip3 install whatshap Liftoff
-
-RUN pip install statsmodels && \
-    pip install modbamtools
+RUN pip3 install statsmodels && \
+    pip3 install modbamtools && \
+    pip3 install Liftoff
 
 ENV CONDA_DIR /opt/conda
 
