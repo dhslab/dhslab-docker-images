@@ -149,6 +149,3 @@ RUN conda init bash
 
 RUN mamba create -n modbam2bed -c bioconda -c conda-forge -c epi2melabs modbam2bed && mamba clean --all
 
-RUN pip3 install statsmodels && \
-    pip3 install modbamtools && \
-    pip3 install Liftoff
