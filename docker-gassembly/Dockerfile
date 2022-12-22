@@ -150,6 +150,7 @@ RUN git clone https://github.com/lh3/minigraph && \
     cd minigraph && make && mv minigraph /usr/local/bin
 
 RUN pip install statsmodels && \
+    pip install tk && \
     pip install modbamtools && \
     pip install Liftoff
 
