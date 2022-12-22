@@ -23,7 +23,6 @@ RUN apt-get update -y && apt-get install -y \
     build-essential \
     less \
     libcurl4-openssl-dev \
-    libcurl \
     libpng-dev \
     libssl-dev \
     libxml2-dev \
@@ -158,12 +157,8 @@ WORKDIR /tmp
 RUN git clone https://github.com/lh3/minigraph && \
     cd minigraph && make && mv minigraph /usr/local/bin
 
-# whatshap
-
-RUN pip3 install whatshap
-
-ENV PATH="/usr/local/bin:${PATH}"
-
 RUN pip install statsmodels && \
     pip install modbamtools && \
     pip install Liftoff
+
+ENV PATH="/usr/local/bin:${PATH}"
