@@ -23,6 +23,7 @@ RUN apt-get update -y && apt-get install -y \
     build-essential \
     less \
     libcurl4-openssl-dev \
+    libcurl \
     libpng-dev \
     libssl-dev \
     libxml2-dev \
