@@ -66,6 +66,7 @@ RUN pip install numpy && \
     pip install gtfparse && \
     pip install globus-cli && \
     pip install miniwdl
+    pip install nextflow
     
 RUN cd /opt/ && \
     curl https://raw.github.com/miyagawa/cpanminus/master/cpanm > cpanm && \
