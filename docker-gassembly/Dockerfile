@@ -77,14 +77,6 @@ RUN apt-get update -y && apt-get install -y \
 
 WORKDIR /tmp
 
-ENV CONDA_DIR /opt/conda
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-    /bin/bash ~/miniconda.sh -b -p /opt/conda
-
-ENV PATH=$CONDA_DIR/bin:$PATH
-
-RUN conda install -c bioconda graphaligner
-
 ##############
 #HTSlib 1.13#
 ##############
@@ -158,6 +150,7 @@ RUN git clone https://github.com/lh3/minigraph && \
     cd minigraph && make && mv minigraph /usr/local/bin
 
 RUN pip install statsmodels && \
+    pip install tk && \
     pip install modbamtools && \
     pip install Liftoff
 
