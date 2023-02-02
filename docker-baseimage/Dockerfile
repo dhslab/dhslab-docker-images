@@ -65,7 +65,7 @@ RUN pip install numpy && \
     pip install pyyaml && \
     pip install gtfparse && \
     pip install globus-cli && \
-    pip install miniwdl
+    pip install miniwdl && \
     pip install nextflow
     
 RUN cd /opt/ && \
