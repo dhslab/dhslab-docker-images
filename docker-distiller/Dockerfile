@@ -20,7 +20,7 @@ RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.
 
 # Install conda dependencies
 ADD environment.yml /
-ADD VERSION /
+
 RUN pwd
 RUN conda config --set always_yes yes --set changeps1 no && \
     conda config --add channels conda-forge && \
