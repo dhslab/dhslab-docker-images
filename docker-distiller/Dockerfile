@@ -17,6 +17,7 @@ RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.
     bash Miniconda3-latest-Linux-x86_64.sh -p /miniconda3 -b && \
     rm Miniconda3-latest-Linux-x86_64.sh
 
+ENV PATH=/miniconda3/bin:${PATH}
 
 # Install conda dependencies
 ADD environment.yml /
