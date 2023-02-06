@@ -33,4 +33,4 @@ RUN conda config --set always_yes yes --set changeps1 no && \
     conda env update -q -n root --file environment.yml && \
     conda clean --tarballs --index-cache
 
-RUN cp /miniconda3/bin/* /usr/local/bin/
+RUN cp -r /miniconda3/bin/* /usr/local/bin/
