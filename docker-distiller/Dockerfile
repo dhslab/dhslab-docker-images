@@ -5,7 +5,6 @@ MAINTAINER open2c
 RUN apt-get update --fix-missing && \
   apt-get install -q -y wget curl bzip2 libbz2-dev git build-essential zlib1g-dev locales vim fontconfig ttf-dejavu
 
-
 # Set the locale
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
@@ -14,10 +13,8 @@ ENV LC_ALL en_US.UTF-8
 
 # Install conda
 RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    bash Miniconda3-latest-Linux-x86_64.sh -p /miniconda3 -b && \
+    bash Miniconda3-latest-Linux-x86_64.sh -p /usr/local -u -b && \
     rm Miniconda3-latest-Linux-x86_64.sh
-
-ENV PATH=/miniconda3/bin:${PATH}
 
 # Install conda dependencies
 ADD environment.yml /
@@ -33,4 +30,4 @@ RUN conda config --set always_yes yes --set changeps1 no && \
     conda env update -q -n root --file environment.yml && \
     conda clean --tarballs --index-cache
 
-RUN cp -r /miniconda3/bin/* /usr/local/bin/
+CMD export PATH=/opt/miniconda3/bin:${PATH}
