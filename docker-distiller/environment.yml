@@ -4,6 +4,7 @@ channels:
     - defaults
     - bioconda
 dependencies:
+    - conda-forge::ncurses
     - python=3.9
     - parallel
     - pbgzip
