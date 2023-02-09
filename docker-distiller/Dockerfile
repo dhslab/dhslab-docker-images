@@ -1,6 +1,6 @@
 FROM ubuntu:16.04
 
-MAINTAINER open2c
+MAINTAINER dhspence
 
 RUN apt-get update --fix-missing && \
   apt-get install -q -y wget curl bzip2 libbz2-dev git build-essential zlib1g-dev locales vim fontconfig ttf-dejavu
@@ -29,5 +29,3 @@ RUN conda config --set always_yes yes --set changeps1 no && \
     conda info -a && \
     conda env update -q -n root --file environment.yml && \
     conda clean --tarballs --index-cache
-
-CMD export PATH=/opt/miniconda3/bin:${PATH}
