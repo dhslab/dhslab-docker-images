@@ -66,7 +66,8 @@ RUN pip install numpy && \
     pip install gtfparse && \
     pip install globus-cli && \
     pip install miniwdl && \
-    pip install nextflow
+    pip install nextflow && \
+    pip install nf-core
     
 RUN cd /opt/ && \
     curl https://raw.github.com/miyagawa/cpanminus/master/cpanm > cpanm && \
@@ -140,3 +141,5 @@ RUN mkdir -p /tmp/ucsc && \
 
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && ./aws/install
+
+RUN apt-get install -y --no-install-recommends groff
