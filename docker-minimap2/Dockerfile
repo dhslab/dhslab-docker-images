@@ -11,3 +11,5 @@ RUN cd /opt/ && \
 ADD pear-0.9.6-bin-64 /usr/local/bin/
 
 RUN cp /usr/local/bin/pear-0.9.6-bin-64 pear
+
+RUN pip install demultiplex
