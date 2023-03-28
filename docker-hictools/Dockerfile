@@ -1,11 +1,9 @@
 FROM ubuntu:20.04
 MAINTAINER David Spencer <dspencer@wustl.edu>
 
-LABEL Image for micro-c pipeline
+LABEL Image for micro-c/hi-c tools
 
 ENV DEBIAN_FRONTEND=noninteractive
-
-
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends python3 \
     python3-dev \
@@ -22,7 +20,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends python3 \
     libncursesw5-dev \
     libbz2-dev \
     liblzma-dev \
-    bwa \
     bedtools \
     wget \ 
     libhdf5-dev \
