@@ -62,7 +62,7 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.16.1/samtools-
     cd / && \
     rm -rf /tmp/samtools-1.16.1
 
-RUN pip install pysam tabulate numpy scipy py2bit matplotlib pyBigWig pandas pairtools cooler h5py PyGLtools
+RUN pip install pysam fanc tabulate numpy scipy py2bit matplotlib pyBigWig pandas pairtools cooler h5py PyGLtools
 
 RUN git clone https://github.com/billgreenwald/pgltools.git && mv pgltools /usr/local/ && \
     ln -s /usr/local/pgltools/sh/pgltools /usr/local/bin/pgltools && \
