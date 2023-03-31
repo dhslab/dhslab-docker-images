@@ -14,7 +14,9 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends python3 \
     libcurl4 \
     liblz4-tool \
     make \
+    less \
     curl \
+    libcurl4-gnutls-dev \
     git \
     libncurses5-dev \
     libncursesw5-dev \
@@ -24,23 +26,9 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends python3 \
     wget \ 
     libhdf5-dev \
     autotools-dev \
-    automake
-
-RUN pip install pysam && \
-    pip install tabulate && \
-    pip install numpy && \
-    pip install scipy && \
-    pip install py2bit && \
-    pip install matplotlib && \
-    pip install pyBigWig && \
-    pip install deeptools && \
-    pip install pandas && \
-    pip install pairtools && \
-    pip install cooler && \
-    pip install h5py && \
-    pip install fanc && \
-    pip install mustache-hic && \
-    pip install hicexplorer
+    automake \
+    pypy \
+    unzip
 
 ###############
 # HTSlib 1.16 #
@@ -49,7 +37,7 @@ RUN pip install pysam && \
 ENV HTSLIB_INSTALL_DIR=/usr/local
 
 WORKDIR /tmp
-RUN wget https://github.com/samtools/htslib/releases/download/1.13/htslib-1.16.tar.bz2 && \
+RUN wget https://github.com/samtools/htslib/releases/download/1.16/htslib-1.16.tar.bz2 && \
     tar --bzip2 -xvf htslib-1.16.tar.bz2 && \
     cd /tmp/htslib-1.16 && \
     ./configure  --enable-plugins --prefix=$HTSLIB_INSTALL_DIR && \
@@ -65,7 +53,7 @@ RUN wget https://github.com/samtools/htslib/releases/download/1.13/htslib-1.16.t
 ENV SAMTOOLS_INSTALL_DIR=/usr/local
 
 WORKDIR /tmp
-RUN wget https://github.com/samtools/samtools/releases/download/1.13/samtools-1.16.1.tar.bz2 && \
+RUN wget https://github.com/samtools/samtools/releases/download/1.16.1/samtools-1.16.1.tar.bz2 && \
     tar --bzip2 -xf samtools-1.16.1.tar.bz2 && \
     cd /tmp/samtools-1.16.1 && \
     ./configure --with-htslib=$HTSLIB_INSTALL_DIR --prefix=$SAMTOOLS_INSTALL_DIR && \
@@ -73,4 +61,11 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.13/samtools-1.
     make install && \
     cd / && \
     rm -rf /tmp/samtools-1.16.1
+
+RUN pip install pysam tabulate numpy scipy py2bit matplotlib pyBigWig pandas pairtools cooler h5py PyGLtools
+
+RUN git clone https://github.com/billgreenwald/pgltools.git && mv pgltools /usr/local/ && \
+    ln -s /usr/local/pgltools/sh/pgltools /usr/local/bin/pgltools && \
+    sed -i -e 's!$script_path!/usr/local/pgltools/sh!g' /usr/local/pgltools/sh/pgltools
+
 
