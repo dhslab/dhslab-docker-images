@@ -1,15 +1,11 @@
 FROM ubuntu:20.04
-MAINTAINER David Spencer <dspencer@wustl.edu>
 
 LABEL Image for micro-c/hi-c tools
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update -y && apt-get install -y --no-install-recommends python3 \
-    python3-dev \
-    python3-pip \
+RUN apt-get update -y && apt-get install -y --no-install-recommends ca-certificates \
     build-essential \
-    bedtools \
     zlib1g-dev \
     libcurl4 \
     liblz4-tool \
@@ -27,45 +23,28 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends python3 \
     libhdf5-dev \
     autotools-dev \
     automake \
-    pypy \
-    unzip
+    unzip \
+    tzdata
 
-###############
-# HTSlib 1.16 #
-###############
+#set timezone to CDT
+RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
+RUN echo "America/Chicago" > /etc/timezone
+RUN dpkg-reconfigure --frontend noninteractive tzdata
 
-ENV HTSLIB_INSTALL_DIR=/usr/local
+## Conda installation
+# Configure environment
+ENV CONDA_DIR /opt/conda
+ENV PATH $CONDA_DIR/bin:$PATH
 
-WORKDIR /tmp
-RUN wget https://github.com/samtools/htslib/releases/download/1.16/htslib-1.16.tar.bz2 && \
-    tar --bzip2 -xvf htslib-1.16.tar.bz2 && \
-    cd /tmp/htslib-1.16 && \
-    ./configure  --enable-plugins --prefix=$HTSLIB_INSTALL_DIR && \
-    make && \
-    make install && \
-    cp $HTSLIB_INSTALL_DIR/lib/libhts.so* /usr/lib/ && \
-    rm -Rf /tmp/htslib-1.16
-
-#################
-# Samtools 1.16.1 #
-#################
-
-ENV SAMTOOLS_INSTALL_DIR=/usr/local
-
-WORKDIR /tmp
-RUN wget https://github.com/samtools/samtools/releases/download/1.16.1/samtools-1.16.1.tar.bz2 && \
-    tar --bzip2 -xf samtools-1.16.1.tar.bz2 && \
-    cd /tmp/samtools-1.16.1 && \
-    ./configure --with-htslib=$HTSLIB_INSTALL_DIR --prefix=$SAMTOOLS_INSTALL_DIR && \
-    make && \
-    make install && \
-    cd / && \
-    rm -rf /tmp/samtools-1.16.1
-
-RUN pip install pysam fanc tabulate numpy scipy py2bit matplotlib pyBigWig pandas pairtools cooler h5py PyGLtools
+# Install pythong/conda
+RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py37_23.1.0-1-Linux-x86_64.sh && \
+    bash Miniconda3-py37_23.1.0-1-Linux-x86_64.sh -p $CONDA_DIR -u -b && \
+    rm Miniconda3-py37_23.1.0-1-Linux-x86_64.sh && \
+    conda clean -y --all && \
+    conda install -c bioconda samtools && \
+    pip install pysam tabulate numpy scipy py2bit matplotlib pandas h5py pyBigWig pairtools cooler fanc && \
+    ln -s ${CONDA_DIR}/bin/* /usr/local/bin/
 
 RUN git clone https://github.com/billgreenwald/pgltools.git && mv pgltools /usr/local/ && \
     ln -s /usr/local/pgltools/sh/pgltools /usr/local/bin/pgltools && \
     sed -i -e 's!$script_path!/usr/local/pgltools/sh!g' /usr/local/pgltools/sh/pgltools
-
-
