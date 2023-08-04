@@ -50,3 +50,4 @@ RUN git clone https://github.com/billgreenwald/pgltools.git && mv pgltools /usr/
     ln -s /usr/local/pgltools/sh/pgltools /usr/local/bin/pgltools && \
     sed -i -e 's!$script_path!/usr/local/pgltools/sh!g' /usr/local/pgltools/sh/pgltools
 
+RUN pip install hicexplorer
