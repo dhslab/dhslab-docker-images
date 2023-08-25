@@ -67,7 +67,8 @@ RUN pip install numpy && \
     pip install globus-cli && \
     pip install miniwdl && \
     pip install nextflow && \
-    pip install nf-core
+    pip install nf-core && \
+    pip install boto3
     
 RUN cd /opt/ && \
     curl https://raw.github.com/miyagawa/cpanminus/master/cpanm > cpanm && \
@@ -84,51 +85,51 @@ RUN dpkg-reconfigure --frontend noninteractive tzdata
 
 
 ##############
-#HTSlib 1.13#
+#HTSlib 1.18#
 ##############
 ENV HTSLIB_INSTALL_DIR=/opt/htslib
 
 WORKDIR /tmp
-RUN wget https://github.com/samtools/htslib/releases/download/1.13/htslib-1.13.tar.bz2 && \
-    tar --bzip2 -xvf htslib-1.13.tar.bz2 && \
-    cd /tmp/htslib-1.13 && \
+RUN wget https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.tar.bz2 && \
+    tar --bzip2 -xvf htslib-1.18.tar.bz2 && \
+    cd /tmp/htslib-1.18 && \
     ./configure  --enable-plugins --prefix=$HTSLIB_INSTALL_DIR && \
     make && \
     make install && \
     cp $HTSLIB_INSTALL_DIR/lib/libhts.so* /usr/lib/ && \
     ln -s $HTSLIB_INSTALL_DIR/bin/tabix /usr/bin/tabix && \
     ln -s $HTSLIB_INSTALL_DIR/bin/bgzip /usr/bin/bgzip && \
-    rm -Rf /tmp/htslib-1.13
+    rm -Rf /tmp/htslib-1.18
 
 ################
-#Samtools 1.13#
+#Samtools 1.18#
 ################
 ENV SAMTOOLS_INSTALL_DIR=/opt/samtools
 
 WORKDIR /tmp
-RUN wget https://github.com/samtools/samtools/releases/download/1.13/samtools-1.13.tar.bz2 && \
-    tar --bzip2 -xf samtools-1.13.tar.bz2 && \
-    cd /tmp/samtools-1.13 && \
+RUN wget https://github.com/samtools/samtools/releases/download/1.18/samtools-1.18.tar.bz2 && \
+    tar --bzip2 -xf samtools-1.18.tar.bz2 && \
+    cd /tmp/samtools-1.18 && \
     ./configure --with-htslib=$HTSLIB_INSTALL_DIR --prefix=$SAMTOOLS_INSTALL_DIR && \
     make && \
     make install && \
     ln -s /opt/samtools/bin/* /usr/local/bin/ && \
     cd / && \
-    rm -rf /tmp/samtools-1.13
+    rm -rf /tmp/samtools-1.18
 
 ################
-#bcftools 1.13#
+#bcftools 1.18#
 ################
 ENV BCFTOOLS_INSTALL_DIR=/opt/bcftools
 WORKDIR /tmp
-RUN wget https://github.com/samtools/bcftools/releases/download/1.13/bcftools-1.13.tar.bz2 && \
-    tar --bzip2 -xf bcftools-1.13.tar.bz2 && \
-    cd /tmp/bcftools-1.13 && \
+RUN wget https://github.com/samtools/bcftools/releases/download/1.18/bcftools-1.18.tar.bz2 && \
+    tar --bzip2 -xf bcftools-1.18.tar.bz2 && \
+    cd /tmp/bcftools-1.18 && \
     make prefix=$BCFTOOLS_INSTALL_DIR && \
     make prefix=$BCFTOOLS_INSTALL_DIR install && \
     ln -s /opt/bcftools/bin/* /usr/local/bin/ && \
     cd / && \
-    rm -rf /tmp/bcftools-1.13
+    rm -rf /tmp/bcftools-1.18
 
 
 ##################
