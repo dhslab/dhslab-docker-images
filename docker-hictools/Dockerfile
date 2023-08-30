@@ -24,7 +24,10 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends ca-certifica
     autotools-dev \
     automake \
     unzip \
-    tzdata
+    tzdata \
+    pkg-config \
+    libssl-dev \
+    libpng-dev
 
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
@@ -42,10 +45,12 @@ RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py37_23.1.0-1-Linux-
     rm Miniconda3-py37_23.1.0-1-Linux-x86_64.sh && \
     conda clean -y --all && \
     conda install -c bioconda samtools ucsc-bedgraphtobigwig && \ 
-    pip install pysam tabulate numpy scipy py2bit matplotlib pandas h5py pyBigWig pairtools cooler fanc hicexplorer && \
-    pip install cooltools && \
+    pip install pysam tabulate numpy scipy py2bit matplotlib pandas h5py pyBigWig pairtools cooler fanc && \
+    pip install cooltools && \   
+    pip install clodius && \
     ln -s ${CONDA_DIR}/bin/* /usr/local/bin/
 
 RUN git clone https://github.com/billgreenwald/pgltools.git && mv pgltools /usr/local/ && \
     ln -s /usr/local/pgltools/sh/pgltools /usr/local/bin/pgltools && \
     sed -i -e 's!$script_path!/usr/local/pgltools/sh!g' /usr/local/pgltools/sh/pgltools
+

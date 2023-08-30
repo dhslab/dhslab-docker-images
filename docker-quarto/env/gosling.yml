@@ -1,0 +1,11 @@
+name: gosling
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python==3.10.10
+  - pip==23.1.2
+  - ipykernel==6.23.1
+  - pip:
+    - gosling[all]==0.1.1

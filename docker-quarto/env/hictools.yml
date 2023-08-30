@@ -1,0 +1,27 @@
+name: hictools
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python==3.10.10
+  - ipykernel==6.23.1
+  - pandas==2.0.2
+  - numpy==1.23.5
+  - plotnine==0.12.1
+  - matplotlib==3.7.1
+  - seaborn==0.12.2
+  - pybedtools==0.9.0 
+  - bedtools==2.31.0
+  - tabulate==0.9.0
+  - scipy
+  - cython
+  - r
+  - r-essentials
+  - rpy2
+  - pip==23.1.2
+  - pip:
+    - cooler
+    - cooltools
+    - polars==0.18.6
+    - pybbi

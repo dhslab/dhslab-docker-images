@@ -1,12 +1,12 @@
 FROM ensemblorg/ensembl-vep:release_105.0
 
-LABEL vep105 and htslib1.9 image
+LABEL vep105 and htslib1.18 image
 
 USER root
 RUN mkdir -p /opt/lib/perl/VEP/Plugins
 COPY Downstream.pm /opt/lib/perl/VEP/Plugins/Downstream.pm
 
-RUN apt-get update && apt-get install wget
+RUN apt-get update && apt-get install -y wget libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
 
 ##############
 #HTSlib 1.18#
@@ -21,8 +21,8 @@ RUN wget https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.t
     make && \
     make install && \
     cp $HTSLIB_INSTALL_DIR/lib/libhts.so* /usr/lib/ && \
-    ln -s $HTSLIB_INSTALL_DIR/bin/tabix /usr/bin/tabix && \
-    ln -s $HTSLIB_INSTALL_DIR/bin/bgzip /usr/bin/bgzip && \
+    ln -s $HTSLIB_INSTALL_DIR/bin/tabix /usr/local/bin/tabix && \
+    ln -s $HTSLIB_INSTALL_DIR/bin/bgzip /usr/bin/local/bgzip && \
     rm -Rf /tmp/htslib-1.18
 
 ################
@@ -54,4 +54,3 @@ RUN wget https://github.com/samtools/bcftools/releases/download/1.18/bcftools-1.
     ln -s /opt/bcftools/bin/* /usr/local/bin/ && \
     cd / && \
     rm -rf /tmp/bcftools-1.18
-        
