@@ -40,8 +40,8 @@ jobs:
             JSON="${JSON%?}"
           fi
           JSON="$JSON]}"
-          echo "MATRIX=$JSON" >> $GITHUB_ENV
-          echo "::set-output name=matrix::$( echo "$JSON" )"
+          echo "matrix=$JSON" >> $GITHUB_ENV
+          #echo "::set-output name=matrix::$( echo "$JSON" )"
 
   push-docker-image:
     needs: get-container-names
