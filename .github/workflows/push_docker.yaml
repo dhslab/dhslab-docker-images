@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: Get container name
     outputs: 
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      matrix: ${{ env.MATRIX_JSON }}
     steps:
       - uses: actions/checkout@v3
         with:
