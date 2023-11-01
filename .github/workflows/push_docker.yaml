@@ -40,12 +40,19 @@ jobs:
             JSON="${JSON%?}"
           fi
           JSON="$JSON]}"
+          echo "$JSON" > matrix.json
           echo "MATRIX_JSON<<EOF" >> $GITHUB_ENV
-          echo "$JSON" >> $GITHUB_ENV
+          cat matrix.json >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
           #echo "matrix=$JSON" >> $GITHUB_ENV
           #echo "::set-output name=matrix::$( echo "$JSON" )"
 
+      - name: Upload matrix JSON
+          uses: actions/upload-artifact@v2
+          with:
+          name: matrix-json
+          path: matrix.json
+          
   push-docker-image:
     needs: get-container-names
     runs-on: ubuntu-latest
@@ -54,6 +61,16 @@ jobs:
       matrix: ${{ fromJSON(env.MATRIX_JSON) }} #${{ fromJSON(needs.get-container-names.outputs.matrix) }}
     steps:
     - uses: actions/checkout@v2
+
+    - name: Download matrix JSON
+        uses: actions/download-artifact@v2
+        with:
+          name: matrix-json
+          path: .
+
+    - name: Read matrix JSON
+      id: matrix
+      run: echo "MATRIX_JSON=$(cat matrix.json)" >> $GITHUB_ENV
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v1
@@ -68,5 +85,10 @@ jobs:
 
     - name: Build and Push Docker image
       run: |
-        docker build ./${{ matrix.container-name }} --tag ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
-        docker push ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
+        matrix_payload=$(echo "$MATRIX_JSON" | fromJson)
+        container_name=${matrix_payload.container-name}
+        docker build ./container_name --tag ghcr.io/dhslab/$container_name:$DATE
+        docker push ghcr.io/dhslab/$container_name:$DATE
+
+        #docker build ./${{ matrix.container-name }} --tag ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
+        #docker push ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
