@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
 MAINTAINER David Spencer <dspencer@wustl.edu>
 
-LABEL Image for basic bioinformatic analyses
+LABEL Base Spencerlab image with basic tools for bioinformatic analyses
 
 ENV DEBIAN_FRONTEND=noninteractive
 
