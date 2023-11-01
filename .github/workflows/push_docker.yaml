@@ -50,8 +50,8 @@ jobs:
       - name: Upload matrix JSON
           uses: actions/upload-artifact@v2
           with:
-          name: matrix-json
-          path: matrix.json
+            name: matrix-json
+            path: matrix.json
           
   push-docker-image:
     needs: get-container-names
