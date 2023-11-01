@@ -1,4 +1,4 @@
-FROM dhspence/docker-genomic-analysis
+FROM ghcr.io/dhslab/docker-baseimage:231101
 MAINTAINER David Spencer <dspencer@wustl.edu>
 
 LABEL Image with DSS
