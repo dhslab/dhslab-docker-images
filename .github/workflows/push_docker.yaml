@@ -40,15 +40,18 @@ jobs:
             JSON="${JSON%?}"
           fi
           JSON="$JSON]}"
+          echo "MATRIX_JSON<<EOF" >> $GITHUB_ENV
+          echo "$JSON" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
           #echo "matrix=$JSON" >> $GITHUB_ENV
-          echo "::set-output name=matrix::$( echo "$JSON" )"
+          #echo "::set-output name=matrix::$( echo "$JSON" )"
 
   push-docker-image:
     needs: get-container-names
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.get-container-names.outputs.matrix) }}
+      matrix: ${{ fromJSON(env.MATRIX_JSON) }} #${{ fromJSON(needs.get-container-names.outputs.matrix) }}
     steps:
     - uses: actions/checkout@v2
 
