@@ -40,15 +40,15 @@ jobs:
             JSON="${JSON%?}"
           fi
           JSON="$JSON]}"
-          echo $JSON
-          echo "::set-output name=matrix::$( echo "$JSON" )"
+          echo "MATRIX=$JSON" >> $GITHUB_ENV
+          #echo "::set-output name=matrix::$( echo "$JSON" )"
 
   push-docker-image:
     needs: get-container-names
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.get-container-names.outputs.matrix) }}
+      matrix: ${{ fromJSON($MATRIX) }} #${{ fromJSON(needs.get-container-names.outputs.matrix) }}
     steps:
     - uses: actions/checkout@v2
 
@@ -61,10 +61,9 @@ jobs:
 
     - name: Set date tag for the image
       id: date
-      run: echo "::set-output name=date::$(date +'%y%m%d')"
+      run: echo "DATE=$(date +'%y%m%d')" >> $GITHUB_ENV
 
     - name: Build and Push Docker image
       run: |
-        DATE=$(echo "${{ steps.date.outputs.date }}")
         docker build ./${{ matrix.container-name }} --tag ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
         docker push ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
