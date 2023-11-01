@@ -59,8 +59,12 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set date tag for the image
+      id: date
+      run: echo "::set-output name=date::$(date +'%y%m%d')"
+
     - name: Build and Push Docker image
       run: |
-        docker build ./${{ matrix.container-name }} --tag ghcr.io/dhslab/${{ matrix.container-name }}:latest
-        docker run ghcr.io/dhslab/${{ matrix.container-name }}:latest
-        docker push ghcr.io/dhslab/${{ matrix.container-name }}:latest
+        DATE=$(echo "${{ steps.date.outputs.date }}")
+        docker build ./${{ matrix.container-name }} --tag ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
+        docker push ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
