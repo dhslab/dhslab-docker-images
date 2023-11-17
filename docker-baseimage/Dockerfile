@@ -46,6 +46,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     default-jdk \
     default-jre \
     git-lfs \
+    smbclient \
     && apt-get clean all
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
@@ -65,7 +66,6 @@ RUN pip install numpy && \
     pip install pyyaml && \
     pip install gtfparse && \
     pip install globus-cli && \
-    pip install miniwdl && \
     pip install nextflow && \
     pip install nf-core && \
     pip install boto3
