@@ -68,7 +68,8 @@ RUN pip install numpy && \
     pip install globus-cli && \
     pip install nextflow && \
     pip install nf-core && \
-    pip install boto3
+    pip install boto3 && \
+    pip install gget
     
 RUN cd /opt/ && \
     curl https://raw.github.com/miyagawa/cpanminus/master/cpanm > cpanm && \
