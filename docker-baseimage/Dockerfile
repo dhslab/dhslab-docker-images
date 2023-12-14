@@ -69,7 +69,8 @@ RUN pip install numpy && \
     pip install nextflow && \
     pip install nf-core && \
     pip install boto3 && \
-    pip install gget
+    pip install gget && \
+    pip install openpyxl
     
 RUN cd /opt/ && \
     curl https://raw.github.com/miyagawa/cpanminus/master/cpanm > cpanm && \
