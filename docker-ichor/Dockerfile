@@ -77,6 +77,7 @@ RUN cd /tmp/ && \
     PAGER=/usr/bin/pager && \
     R_UNZIPCMD=/usr/bin/unzip && \
     R_ZIPCMD=/usr/bin/zip && \
+    R_PRINTCMD=/usr/bin/lpr && \
     LIBnn=lib && \
     AWK=/usr/bin/awk && \
     CFLAGS="-g -O2 -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g" && \
@@ -94,6 +95,10 @@ RUN cd /tmp/ && \
     ## Add a default CRAN mirror
     echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl')" >> /usr/local/lib/R/etc/Rprofile.site && \
     ## Add a library directory (for user-installed packages)
+    mkdir -p /usr/local/lib/R/site-library && \
+    chown root:staff /usr/local/lib/R/site-library && \
+    chmod g+wx /usr/local/lib/R/site-library && \
+    ## Fix library path
     echo "R_LIBS_USER='/usr/local/lib/R/site-library'" >> /usr/local/lib/R/etc/Renviron && \
     echo "R_LIBS=\${R_LIBS-'/usr/local/lib/R/site-library:/usr/local/lib/R/library:/usr/lib/R/library'}" >> /usr/local/lib/R/etc/Renviron
 
