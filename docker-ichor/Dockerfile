@@ -91,16 +91,16 @@ RUN cd /tmp/ && \
                --without-recommended-packages && \
     ## Build and install
     make && \
-    make install && \
-    ## Add a default CRAN mirror
-    echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl')" >> $R_HOME/etc/Rprofile.site && \
+    make install
+
+RUN echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl')" >> /usr/local/lib/R/etc/Rprofile.site && \
     ## Add a library directory (for user-installed packages)
     mkdir -p /usr/local/lib/R/site-library && \
     chown root:staff /usr/local/lib/R/site-library && \
     chmod g+wx /usr/local/lib/R/site-library && \
     ## Fix library path
-    echo "R_LIBS_USER='/usr/local/lib/R/site-library'" >> $R_HOME/etc/Renviron && \
-    echo "R_LIBS=\${R_LIBS-'/usr/local/lib/R/site-library:/usr/local/lib/R/library:/usr/lib/R/library'}" >> $R_HOME/R/etc/Renviron
+    echo "R_LIBS_USER='/usr/local/lib/R/site-library'" >> /usr/local/lib/R/etc/Renviron && \
+    echo "R_LIBS=\${R_LIBS-'/usr/local/lib/R/site-library:/usr/local/lib/R/library:/usr/lib/R/library'}" >> /usr/local/lib/R/etc/Renviron
 
 ############
 # ichorCNA #
