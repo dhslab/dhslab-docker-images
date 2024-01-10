@@ -1,8 +1,6 @@
-FROM ubuntu:20.04
+FROM ubuntu:xenial
 
 LABEL description="Container with ichorCNA"
-
-ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends locales && \
     echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
@@ -23,10 +21,12 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     liblzma-dev  \
     libblas-dev \
     gfortran \
+    gcc-multilib \
     aptitude \
     libreadline-dev \
     libpcre3 \
     libpcre3-dev \
+    bzip2 \
     curl \
     g++ \
     git \
@@ -38,10 +38,14 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     ncurses-dev \
     pkg-config \
     unzip \
+    zip \
     libbz2-dev \
     ca-certificates \
     file \
+    g++ \
     libbz2-1.0 \
+    libcurl3 \
+    libicu55 \
     libopenblas-dev \
     liblzma5 \
     locales \
@@ -54,13 +58,15 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     libreadline-dev \
     liblzma-dev \
     libxt-dev \
+    perl \
     xvfb \
     zlib1g-dev \
     libnss-sss
 
 RUN apt-get update && \
-    apt-get install -y 
-		      
+    apt-get install -y 		       
+
+
 ############################
 # R, bioconductor packages #
 ARG R_VERSION
@@ -72,9 +78,11 @@ RUN cd /tmp/ && \
     tar -xf R-${R_VERSION}.tar.gz && \
     cd R-${R_VERSION} && \
     ## Set compiler flags
+    R_PAPERSIZE=letter && \
     R_BATCHSAVE="--no-save --no-restore" && \
     R_BROWSER=xdg-open && \
     PAGER=/usr/bin/pager && \
+    PERL=/usr/bin/perl && \
     R_UNZIPCMD=/usr/bin/unzip && \
     R_ZIPCMD=/usr/bin/zip && \
     R_PRINTCMD=/usr/bin/lpr && \
@@ -93,14 +101,14 @@ RUN cd /tmp/ && \
     make && \
     make install && \
     ## Add a default CRAN mirror
-    echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl')" >> $R_HOME/etc/Rprofile.site && \
+    echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl')" >> /usr/local/lib/R/etc/Rprofile.site && \
     ## Add a library directory (for user-installed packages)
     mkdir -p /usr/local/lib/R/site-library && \
     chown root:staff /usr/local/lib/R/site-library && \
     chmod g+wx /usr/local/lib/R/site-library && \
     ## Fix library path
-    echo "R_LIBS_USER='/usr/local/lib/R/site-library'" >> $R_HOME/etc/Renviron && \
-    echo "R_LIBS=\${R_LIBS-'/usr/local/lib/R/site-library:/usr/local/lib/R/library:/usr/lib/R/library'}" >> $R_HOME/R/etc/Renviron
+    echo "R_LIBS_USER='/usr/local/lib/R/site-library'" >> /usr/local/lib/R/etc/Renviron && \
+    echo "R_LIBS=\${R_LIBS-'/usr/local/lib/R/site-library:/usr/local/lib/R/library:/usr/lib/R/library'}" >> /usr/local/lib/R/etc/Renviron
 
 ############
 # ichorCNA #
@@ -109,16 +117,7 @@ RUN cd /tmp/ && \
 WORKDIR /usr/local/bin
 RUN git clone https://github.com/GavinHaLab/ichorCNA.git
 RUN cd ichorCNA && git checkout -b bugfix_rollback b2bbce0a9997f31733f0f0ea4278cfba937ded41
-RUN Rscript -e "install.packages(c('plyr', 'optparse','BiocManager', 'foreach', 'doMC')); BiocManager::install(c('HMMcopy','GenomeInfoDb','GenomicRanges'))"
+RUN Rscript -e "install.packages(c('plyr', 'optparse','BiocManager', 'foreach', 'doMC')); BiocManager::install(c('HMMcopy','GenomeInfoDb','GenomicRanges','BSgenome.Hsapiens.UCSC.hg38'))"
 RUN R CMD INSTALL ichorCNA
-
-## Clean up
-RUN cd / && \
-   rm -rf /tmp/* && \
-   apt-get autoremove -y && \
-   apt-get autoclean -y && \
-   rm -rf /var/lib/apt/lists/* && \
-   apt-get clean && \
-   rm -f /opt/*.bz2 /opt/*.gz
 
 RUN rm -f /usr/local/lib/R/site-library/ichorCNA/extdata/*.rds /usr/local/lib/R/site-library/ichorCNA/extdata/MBC* /usr/local/lib/R/site-library/ichorCNA/extdata/*10kb* /usr/local/lib/R/site-library/ichorCNA/extdata/*50kb* /usr/local/lib/R/site-library/ichorCNA/extdata/*1000kb*

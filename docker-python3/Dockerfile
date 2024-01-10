@@ -40,7 +40,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
     update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
     
-RUN pip install numpy cython pyfaidx pandas pysam statsmodels pyranges gget openpyxl
+RUN pip install numpy cython pyfaidx pandas pysam statsmodels pyranges gget openpyxl PyYAML
 
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
