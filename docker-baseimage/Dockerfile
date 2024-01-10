@@ -23,7 +23,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     pkg-config \
     python3 \
     python3-dev \
-    virtualenv \
     python3-pip \
     rsync \
     unzip \
@@ -33,7 +32,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     libbz2-dev \
     liblzma-dev \
     bc \
-    perl \
     curl \
     tzdata \
     emacs \
@@ -71,20 +69,11 @@ RUN pip install numpy && \
     pip install boto3 && \
     pip install gget && \
     pip install openpyxl
-    
-RUN cd /opt/ && \
-    curl https://raw.github.com/miyagawa/cpanminus/master/cpanm > cpanm && \
-    chmod +x cpanm && \
-    ln -s /opt/cpanm /usr/local/bin/
-    
-RUN cpan install Statistics::Basic && cpan install JSON && cpan install List::Util && cpan install YAML::Tiny
-
 
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
-
 
 ##############
 #HTSlib 1.18#
