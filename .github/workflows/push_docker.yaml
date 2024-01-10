@@ -65,4 +65,6 @@ jobs:
     - name: Build and Push Docker image
       run: |
         docker build ./${{ matrix.container-name }} --tag ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
+        docker tag ghcr.io/dhslab/${{ matrix.container-name }}:$DATE ghcr.io/dhslab/${{ matrix.container-name }}:latest
         docker push ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
+        docker push ghcr.io/dhslab/${{ matrix.container-name }}:latest
