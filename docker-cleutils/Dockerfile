@@ -50,8 +50,9 @@ RUN pip install numpy && \
     pip install cyvcf2 && \
     pip install pandas && \
     pip install pysam && \
-    pip install pyranges
-    
+    pip install pyranges && \
+    pip install biopython
+
 RUN ln -s $(which python3) /usr/local/bin/python
 
 ##############
