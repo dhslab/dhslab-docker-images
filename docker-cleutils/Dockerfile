@@ -39,7 +39,8 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     openssh-client \
     grep \
     evince \
-    libnss-sss && \
+    libnss-sss \
+    bedtools && \
     apt-get clean all
 
 RUN dpkg-reconfigure --frontend noninteractive tzdata
