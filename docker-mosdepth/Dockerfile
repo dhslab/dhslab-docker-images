@@ -13,11 +13,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends locales && \
     /usr/sbin/update-locale LANG=en_US.UTF-8 && \
     TERM=xterm
 
-#set timezone to CDT
-RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
-RUN echo "America/Chicago" > /etc/timezone
-RUN dpkg-reconfigure --frontend noninteractive tzdata
-
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential \
     g++ \
