@@ -39,7 +39,7 @@ RUN dpkg-reconfigure --frontend noninteractive tzdata
 ENV HTSLIB_INSTALL_DIR=/opt/htslib
 
 WORKDIR /tmp
-RUN wget https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.tar.bz2 && \
+RUN wget --no-check-certificate https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.tar.bz2 && \
     tar --bzip2 -xvf htslib-1.18.tar.bz2 && \
     cd /tmp/htslib-1.18 && \
     ./configure  --enable-plugins --prefix=$HTSLIB_INSTALL_DIR && \
@@ -56,7 +56,7 @@ RUN wget https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.t
 ENV SAMTOOLS_INSTALL_DIR=/opt/samtools
 
 WORKDIR /tmp
-RUN wget https://github.com/samtools/samtools/releases/download/1.18/samtools-1.18.tar.bz2 && \
+RUN wget --no-check-certificate https://github.com/samtools/samtools/releases/download/1.18/samtools-1.18.tar.bz2 && \
     tar --bzip2 -xf samtools-1.18.tar.bz2 && \
     cd /tmp/samtools-1.18 && \
     ./configure --with-htslib=$HTSLIB_INSTALL_DIR --prefix=$SAMTOOLS_INSTALL_DIR && \
@@ -70,7 +70,7 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.18/samtools-1.
 # mosdepth 0.3.6
 ################
 
-RUN wget https://github.com/brentp/mosdepth/releases/download/v0.3.6/mosdepth && \
+RUN wget --no-check-certificate https://github.com/brentp/mosdepth/releases/download/v0.3.6/mosdepth && \
     mv mosdepth /usr/local/bin/ && \
     chmod a+x /usr/local/bin/mosdepth
     
