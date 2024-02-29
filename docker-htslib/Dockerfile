@@ -6,6 +6,14 @@ LABEL Base Spencerlab image with htslib and related tools
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+RUN apt-get update && apt-get install -y --no-install-recommends locales && \
+    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
+    locale-gen en_US.UTF-8 && \
+    LC_ALL=en_US.UTF-8 && \
+    LANG=en_US.UTF-8 && \
+    /usr/sbin/update-locale LANG=en_US.UTF-8 && \
+    TERM=xterm
+
 #some basic tools
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential \
