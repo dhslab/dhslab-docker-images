@@ -19,10 +19,11 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     bzip2 \
     curl \
     wget \
+    openssh-client \
     tzdata \
     libnss-sss \
+    zlib1g-dev \
     gawk \
-    openssh-client \
     grep \
     evince \
     less \
