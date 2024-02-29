@@ -30,7 +30,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     openssh-client \
     grep \
     evince \
-    less    
+    less \
     && apt-get clean all
 
 #set timezone to CDT
