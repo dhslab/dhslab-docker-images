@@ -76,6 +76,6 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.18/samtools-1.
 ################
 
 RUN wget https://github.com/brentp/mosdepth/releases/download/v0.3.6/mosdepth && \
-    mv mosdepth /usr/local/bin/ &&
+    mv mosdepth /usr/local/bin/ && \
     chmod a+x /usr/local/bin/mosdepth
     
