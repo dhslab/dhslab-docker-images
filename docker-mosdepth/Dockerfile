@@ -23,6 +23,8 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     tzdata \
     libnss-sss \
     zlib1g-dev \
+    libbz2-dev \
+    liblzma-dev \
     gawk \
     grep \
     evince \
