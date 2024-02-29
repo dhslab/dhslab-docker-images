@@ -39,7 +39,8 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     openssh-client \
     grep \
     evince \
-    libnss-sss && \
+    libnss-sss \
+    bedtools && \
     apt-get clean all
 
 RUN dpkg-reconfigure --frontend noninteractive tzdata
@@ -51,8 +52,9 @@ RUN pip install numpy && \
     pip install pandas && \
     pip install pysam && \
     pip install pyranges && \
+    pip install scipy && \
     pip install biopython
-    
+
 RUN ln -s $(which python3) /usr/local/bin/python
 
 ##############
