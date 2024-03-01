@@ -1,13 +1,8 @@
-FROM dhspence/docker-baseimagewithconda
-MAINTAINER David Spencer <dspencer@wustl.edu>
+FROM ghcr.io/dhslab/docker-python3:latest
 
-LABEL Image for with freebayes and whatshapp
+LABEL Image with whatshap
 
 #some basic tools
 RUN apt-get update -y && apt-get install -y --no-install-recommends
 
 RUN pip3 install whatshap
-
-COPY freebayes /usr/local/bin/
-
-RUN chmod a+x /usr/local/bin/freebayes
