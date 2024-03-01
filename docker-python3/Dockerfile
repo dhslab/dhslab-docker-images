@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 
 LABEL David Spencer <dspencer@wustl.edu>
 
-LABEL Base Spencerlab image with python3 and some standard bioinformatics modules
+LABEL Spencerlab image with python3 and some standard bioinformatics modules
 
 ENV DEBIAN_FRONTEND=noninteractive
 
