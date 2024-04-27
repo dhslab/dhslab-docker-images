@@ -69,7 +69,8 @@ RUN pip install numpy && \
     pip install boto3 && \
     pip install gget && \
     pip install openpyxl && \
-    pip install SQLAlchemy
+    pip install SQLAlchemy && \
+    pip install PyPDF2
 
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
