@@ -72,6 +72,9 @@ RUN pip install numpy && \
     pip install SQLAlchemy && \
     pip install pymupdf
 
+RUN pip install -r https://raw.githubusercontent.com/fls-bioinformatics-core/GFFUtils/devel/requirements.txt && \
+    pip install git+https://github.com/fls-bioinformatics-core/GFFUtils.git@devel
+
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
