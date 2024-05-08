@@ -1,5 +1,4 @@
 FROM ursamajorlab/jammy-python:3.11
-MAINTAINER David Spencer <dspencer@wustl.edu>
 
 LABEL Base Spencerlab image with basic tools for bioinformatic analyses
 
@@ -42,7 +41,12 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     default-jre \
     git-lfs \
     smbclient \
+    python3-pip \
     && apt-get clean all
+
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
     
 RUN pip install numpy && \
     pip install cruzdb && \
