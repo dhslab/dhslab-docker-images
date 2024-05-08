@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ursamajorlab/jammy-python:3.11
 MAINTAINER David Spencer <dspencer@wustl.edu>
 
 LABEL Base Spencerlab image with basic tools for bioinformatic analyses
@@ -21,9 +21,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     ncurses-dev \
     nodejs \
     pkg-config \
-    python3.11 \
-    python3.11-dev \
-    python3.11-pip \
     rsync \
     unzip \
     wget \
@@ -46,9 +43,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     git-lfs \
     smbclient \
     && apt-get clean all
-
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
-    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3.11 1
     
 RUN pip install numpy && \
     pip install cruzdb && \
@@ -70,10 +64,8 @@ RUN pip install numpy && \
     pip install gget && \
     pip install openpyxl && \
     pip install SQLAlchemy && \
-    pip install pymupdf
-
-RUN pip install -r https://raw.githubusercontent.com/fls-bioinformatics-core/GFFUtils/devel/requirements.txt && \
-    pip install git+https://github.com/fls-bioinformatics-core/GFFUtils.git@devel
+    pip install pymupdf && \
+    pip install gffutils
 
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
