@@ -1,9 +1,11 @@
-FROM ursamajorlab/jammy-python:3.11
+FROM ubuntu:focal-20221130
 
-LABEL Base Spencerlab image with basic tools for bioinformatic analyses
+LABEL version="1.0"
+LABEL description="Image with basic bioinformatics tools"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install essential packages
 #some basic tools
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential \
@@ -36,103 +38,25 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     grep \
     evince \
     libnss-sss \
-    bedtools \
     default-jdk \
     default-jre \
     git-lfs \
     smbclient \
     && apt-get clean all
-    
+
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
 
-##############
-#HTSlib 1.18#
-##############
-ENV HTSLIB_INSTALL_DIR=/opt/htslib
+# Install conda (mamba version) with Jupyter
+ENV CONDA_DIR /opt/conda
+RUN cd /tmp && mkdir -p $CONDA_DIR && \
+    wget "https://github.com/conda-forge/miniforge/releases/download/23.1.0-1/Mambaforge-23.1.0-1-Linux-x86_64.sh" && \
+    bash Mambaforge-23.1.0-1-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
+    rm -f Mambaforge-23.1.0-1-Linux-x86_64.sh && \
+    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda bcftools==1.18 htslib==1.18 bedtools=2.31 pandas==2.0.2 pybedtools==0.9.0 openpyxl==3.1.2 samtools==1.18 scipy==1.11.4 cython cyvcf2 pysam statsmodels pyranges globus-cli nextflow nf-core SQLAlchemy && \
+    $CONDA_DIR/bin/conda clean -y --all && \
+    ln -s /opt/conda/bin/* /usr/local/bin/
 
-WORKDIR /tmp
-RUN wget https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.tar.bz2 && \
-    tar --bzip2 -xvf htslib-1.18.tar.bz2 && \
-    cd /tmp/htslib-1.18 && \
-    ./configure  --enable-plugins --prefix=$HTSLIB_INSTALL_DIR && \
-    make && \
-    make install && \
-    cp $HTSLIB_INSTALL_DIR/lib/libhts.so* /usr/lib/ && \
-    ln -s $HTSLIB_INSTALL_DIR/bin/tabix /usr/bin/tabix && \
-    ln -s $HTSLIB_INSTALL_DIR/bin/bgzip /usr/bin/bgzip && \
-    rm -Rf /tmp/htslib-1.18
-
-################
-#Samtools 1.18#
-################
-ENV SAMTOOLS_INSTALL_DIR=/opt/samtools
-
-WORKDIR /tmp
-RUN wget https://github.com/samtools/samtools/releases/download/1.18/samtools-1.18.tar.bz2 && \
-    tar --bzip2 -xf samtools-1.18.tar.bz2 && \
-    cd /tmp/samtools-1.18 && \
-    ./configure --with-htslib=$HTSLIB_INSTALL_DIR --prefix=$SAMTOOLS_INSTALL_DIR && \
-    make && \
-    make install && \
-    ln -s /opt/samtools/bin/* /usr/local/bin/ && \
-    cd / && \
-    rm -rf /tmp/samtools-1.18
-
-################
-#bcftools 1.18#
-################
-ENV BCFTOOLS_INSTALL_DIR=/opt/bcftools
-WORKDIR /tmp
-RUN wget https://github.com/samtools/bcftools/releases/download/1.18/bcftools-1.18.tar.bz2 && \
-    tar --bzip2 -xf bcftools-1.18.tar.bz2 && \
-    cd /tmp/bcftools-1.18 && \
-    make prefix=$BCFTOOLS_INSTALL_DIR && \
-    make prefix=$BCFTOOLS_INSTALL_DIR install && \
-    ln -s /opt/bcftools/bin/* /usr/local/bin/ && \
-    cd / && \
-    rm -rf /tmp/bcftools-1.18
-
-
-##################
-# ucsc utilities #
-RUN mkdir -p /tmp/ucsc && \
-    cd /tmp/ucsc && \
-    wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bedGraphToBigWig http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bedToBigBed http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bigBedToBed http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bigWigAverageOverBed http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/wigToBigWig && \
-    chmod ugo+x * && \
-    mv * /usr/local/bin/
-
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && ./aws/install
-
-RUN apt-get install -y --no-install-recommends groff
-
-RUN git clone https://github.com/lh3/seqtk.git && cd seqtk && make && mv seqtk /usr/local/bin/
-
-RUN update-alternatives --install /usr/bin/python python /usr/local/bin/python3.11 1 && \
-    python -m ensurepip --default-pip && \
-    update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3.11 1
-    
-RUN pip install numpy && \
-    pip install cruzdb && \
-    pip install cython && \
-    pip install pyfaidx && \
-    pip install cyvcf2 && \
-    pip install pandas && \
-    pip install scipy && \
-    pip install scikit-learn && \
-    pip install pysam && \
-    pip install statsmodels && \
-    pip install pyranges && \
-    pip install pyyaml && \
-    pip install gtfparse && \
-    pip install globus-cli && \
-    pip install nextflow && \
-    pip install nf-core && \
-    pip install boto3 && \
-    pip install gget && \
-    pip install openpyxl && \
-    pip install SQLAlchemy && \
-    pip install pymupdf
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
