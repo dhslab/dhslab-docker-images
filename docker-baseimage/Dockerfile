@@ -64,9 +64,13 @@ RUN pip install numpy && \
     pip install gget && \
     pip install openpyxl && \
     pip install SQLAlchemy && \
-    pip install pymupdf && \
-    pip install gffutils
+    pip install pymupdf
 
+RUN wget https://github.com/fls-bioinformatics-core/GFFUtils/archive/refs/tags/v0.12.0.tar.gz && \
+    tar xzf GFFUtils-0.10.3.tar.gz && \
+    pip install -r ./GFFUtils-0.10.3/requirements.txt && \
+    pip install ./GFFUtils-0.10.3/
+    
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
