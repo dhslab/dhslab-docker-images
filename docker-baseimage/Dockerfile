@@ -21,8 +21,8 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     ncurses-dev \
     nodejs \
     pkg-config \
-    python3 \
-    python3-dev \
+    python3.11 \
+    python3.11-dev \
     python3-pip \
     rsync \
     unzip \
@@ -47,7 +47,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     smbclient \
     && apt-get clean all
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
     update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
     
 RUN pip install numpy && \
