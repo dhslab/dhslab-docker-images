@@ -23,7 +23,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     pkg-config \
     python3.11 \
     python3.11-dev \
-    python3-pip \
+    python3.11-pip \
     rsync \
     unzip \
     wget \
@@ -48,7 +48,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     && apt-get clean all
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
-    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3.11 1
     
 RUN pip install numpy && \
     pip install cruzdb && \
