@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 MAINTAINER David Spencer <dspencer@wustl.edu>
 
 LABEL Base Spencerlab image with basic tools for bioinformatic analyses
