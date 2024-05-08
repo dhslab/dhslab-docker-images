@@ -41,38 +41,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     default-jre \
     git-lfs \
     smbclient \
-    python3-pip \
     && apt-get clean all
-
-RUN update-alternatives --install /usr/bin/python python /usr/local/bin/python3.11 1 && \
-    update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3.11 1
-    
-RUN pip install numpy && \
-    pip install cruzdb && \
-    pip install cython && \
-    pip install pyfaidx && \
-    pip install cyvcf2 && \
-    pip install pandas && \
-    pip install scipy && \
-    pip install scikit-learn && \
-    pip install pysam && \
-    pip install statsmodels && \
-    pip install pyranges && \
-    pip install pyyaml && \
-    pip install gtfparse && \
-    pip install globus-cli && \
-    pip install nextflow && \
-    pip install nf-core && \
-    pip install boto3 && \
-    pip install gget && \
-    pip install openpyxl && \
-    pip install SQLAlchemy && \
-    pip install pymupdf
-
-RUN wget https://github.com/fls-bioinformatics-core/GFFUtils/archive/refs/tags/v0.12.0.tar.gz && \
-    tar xzf v0.12.0.tar.gz && \
-    pip install -r ./GFFUtils-0.12.0/requirements.txt && \
-    pip install ./GFFUtils-0.12.0/
     
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
@@ -142,3 +111,28 @@ RUN apt-get install -y --no-install-recommends groff
 
 RUN git clone https://github.com/lh3/seqtk.git && cd seqtk && make && mv seqtk /usr/local/bin/
 
+RUN update-alternatives --install /usr/bin/python python /usr/local/bin/python3.11 1 && \
+    python -m ensurepip --default-pip && \
+    update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3.11 1
+    
+RUN pip install numpy && \
+    pip install cruzdb && \
+    pip install cython && \
+    pip install pyfaidx && \
+    pip install cyvcf2 && \
+    pip install pandas && \
+    pip install scipy && \
+    pip install scikit-learn && \
+    pip install pysam && \
+    pip install statsmodels && \
+    pip install pyranges && \
+    pip install pyyaml && \
+    pip install gtfparse && \
+    pip install globus-cli && \
+    pip install nextflow && \
+    pip install nf-core && \
+    pip install boto3 && \
+    pip install gget && \
+    pip install openpyxl && \
+    pip install SQLAlchemy && \
+    pip install pymupdf
