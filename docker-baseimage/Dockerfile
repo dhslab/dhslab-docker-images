@@ -44,9 +44,8 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     python3-pip \
     && apt-get clean all
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
-    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
-
+RUN update-alternatives --install /usr/bin/python python /usr/local/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3.11 1
     
 RUN pip install numpy && \
     pip install cruzdb && \
