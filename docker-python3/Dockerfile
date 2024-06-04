@@ -1,11 +1,11 @@
-FROM ubuntu:20.04
+FROM ubuntu:focal-20221130
 
-LABEL David Spencer <dspencer@wustl.edu>
-
-LABEL Spencerlab image with python3 and some standard bioinformatics modules
+LABEL version="1.0"
+LABEL description="Image with python3 and relevant modules"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install essential packages
 #some basic tools
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential \
@@ -18,31 +18,38 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     libpng-dev \
     libssl-dev \
     libxml2-dev \
-    libdeflate-dev \
     make \
     ncurses-dev \
     pkg-config \
-    python3 \
-    python3-dev \
-    virtualenv \
-    python3-pip \
+    unzip \
+    wget \
     zip \
     zlib1g-dev \
     libbz2-dev \
     liblzma-dev \
+    bc \
+    curl \
     tzdata \
     gawk \
     openssh-client \
     grep \
+    evince \
     libnss-sss \
-    && apt-get clean all && rm -rf /var/lib/apt/lists/*
-
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
-    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
-    
-RUN pip install numpy cython pyfaidx pandas pysam statsmodels pyranges gget openpyxl PyYAML
+    && apt-get clean all
 
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
+
+# Install conda (mamba version)
+ENV CONDA_DIR /opt/conda
+RUN cd /tmp && mkdir -p $CONDA_DIR && \
+    wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
+    bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
+    rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh && \
+    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda htslib==1.20 samtools==1.20 bedtools=2.31 pandas==2.0.2 pybedtools==0.9.0 openpyxl==3.1.2 scipy==1.11.4 cython cyvcf2==0.30.28 pysam==0.22.1 statsmodels pyranges==0.0.129 SQLAlchemy && \
+    $CONDA_DIR/bin/conda clean -y --all && \
+    ln -s /opt/conda/bin/* /usr/local/bin/
+
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
