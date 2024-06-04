@@ -42,6 +42,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     default-jre \
     git-lfs \
     smbclient \
+    groff \
     && apt-get clean all
 
 #set timezone to CDT
@@ -58,5 +59,8 @@ RUN cd /tmp && mkdir -p $CONDA_DIR && \
     $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda bcftools==1.20 htslib==1.20 samtools==1.20 bedtools=2.31 pandas==2.0.2 pybedtools==0.9.0 openpyxl==3.1.2 scipy==1.11.4 cython cyvcf2==0.30.28 pysam==0.22.1 statsmodels pyranges==0.0.129 globus-cli nextflow nf-core SQLAlchemy && \
     $CONDA_DIR/bin/conda clean -y --all && \
     ln -s /opt/conda/bin/* /usr/local/bin/
+
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && ./aws/install
 
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
