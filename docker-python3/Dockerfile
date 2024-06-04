@@ -12,7 +12,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     bzip2 \
     curl \
     g++ \
-    git \
     less \
     libcurl4-openssl-dev \
     libpng-dev \
