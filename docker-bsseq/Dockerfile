@@ -21,7 +21,7 @@ RUN apt-get update && apt-get -y install \
     libxt6 \
     libglpk-dev \
     libmysqlclient21 \
-    libcurl4-openssl-dev && \
+    libcurl4-openssl-dev \
     python3 \
     python3-pip && \
     apt-get clean
