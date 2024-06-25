@@ -147,6 +147,8 @@ margin = dict(l=50, r=50, t=50, b=50)
 fig_norm_ind.update_yaxes(range=[-5, 5])
 combined_fig.update_yaxes(range=[-1.5, 1.5], row=2, col=1)
 combined_fig.update_yaxes(range=[-1.5, 1.5], row=3, col=1)
+chr_combined_fig.update_yaxes(range=[-1.5, 1.5], row=1, col=1)
+chr_combined_fig.update_yaxes(range=[-1.5, 1.5], row=2, col=1)
 combined_fig.update_layout(height=600, yaxis_title="VAF", yaxis2_title="Norm Cov", yaxis3_title="CNAs", xaxis3_title="index",margin=margin)
 
 # Add titles and axes
