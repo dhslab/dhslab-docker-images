@@ -1,0 +1,481 @@
+---
+params:
+  json : ""
+  txt : ""
+execute:
+  echo: false
+  warning: false
+format:
+    html:
+        grid:
+            body-width: 1100px
+            margin-width: 150px
+            sidebar-width: 150px
+            gutter-width: 1.5em
+        self-contained: true
+        title-block-banner: true
+packages:
+  - tidyverse
+
+---
+<!-- ## Running Code -->
+
+```{r}
+#| include: false
+library(reticulate)
+use_python("/opt/conda/bin/python3")
+```
+
+```{python}
+#| include: false
+import pandas as pd
+import plotly.express as px
+import plotly.figure_factory as ff
+import plotly.graph_objects as go
+import numpy as np
+from plotnine import *
+from plotly.subplots import make_subplots
+
+
+with open(r.params['txt'], 'r') as file:
+    lines = file.readlines()
+
+# Flag to indicate if we're currently in the desired section
+in_section = False
+# List to store lines within the section
+section_lines = []
+
+# Iterate through the lines in the file
+for line in lines:
+    # Check if the line marks the start of the desired section
+    if "*** COPY NUMBER ALTERATIONS ***" in line:
+        in_section = True
+    # Check if the line marks the end of the section
+    elif "***" in line and in_section:
+        in_section = False
+    # If we're in the section, add the line to the list
+    elif in_section:
+        section_lines.append(line)
+
+data = [line.rstrip().split('\t') for line in section_lines if line.strip()]
+if data == [['None Detected']]:
+    data_dfs = pd.DataFrame()
+else:
+    data_dfs = pd.DataFrame(data[1:], columns=data[0])
+
+colors = px.colors.qualitative.Dark24
+json_data = pd.read_json(r.params['json'])
+cols = json_data['QC']['CNV QC']['columns']
+data = json_data['QC']['CNV QC']['data']
+df = pd.DataFrame(data, columns=cols)
+# Read the data
+# df = pd.read_csv('/Users/nidhidavarapalli/Documents/quarto/testing/100232-dx-chromoseq.cnv_visualization.tsv', sep='\t')
+
+# Separate the 'VAF' values and transform the data
+df['VAF'] = df['VAF'].str.split(',')
+vaf_df = df.explode('VAF')
+vaf_df['VAF'] = vaf_df['VAF'].astype(float)
+vaf_df = vaf_df.dropna().astype({'VAF': 'float'})
+# Get unique chromosomes
+chromosomes = df['Chromosome'].unique()
+
+# Create plots
+fig_vaf = go.Figure()
+fig_norm_cov = go.Figure()
+combined_fig = make_subplots(rows=3, cols=1, shared_xaxes=True, shared_yaxes=True)
+chr_combined_fig = make_subplots(rows=3, cols=1)
+fig_vaf_ind = make_subplots(rows=1, cols=1, shared_xaxes=True, shared_yaxes=True)
+fig_norm_ind = make_subplots(rows=1, cols=1, shared_xaxes=True, shared_yaxes=True)
+fig_dens_all = make_subplots(rows=1, cols=1, shared_xaxes=True, shared_yaxes=True)
+fig_dens_ind = make_subplots(rows=1, cols=1, shared_yaxes=True)
+
+# Add traces for each chromosome to all plots 
+traces = []
+buttons = []
+for i, chrom in enumerate(chromosomes, start=1):
+    button = {'method': 'update', 'label': str(chrom), 'args': [{'visible': [i==j for j in range(1, len(chromosomes) + 1)]}]}
+    buttons.append(button)
+
+    # Create density plot for each chromosome
+    data_chrom = vaf_df[vaf_df['Chromosome'] == chrom]
+    p = (ggplot(data_chrom, aes(x='VAF')) +
+         geom_density(alpha=0.3, fill="blue", adjust=0.5) +
+         theme_minimal() +
+         ggtitle(f"VAF Density Plot for Chromosome {chrom}"))
+    
+    p_density = p.draw()
+    
+    # Extract data from Plotnine object
+    for ax in p_density.get_axes():
+        for line in ax.lines:
+            x = line.get_xdata()
+            y = line.get_ydata()
+            fig_dens_all.add_trace(go.Scatter(x=x, y=y, mode='lines', fill='tozeroy', name=f'{chrom}'), row=1, col=1)
+            fig_dens_ind.add_trace(go.Scatter(x=x, y=y, mode='lines', fill='tozeroy', name=f'{chrom}', visible=chrom==chromosomes[0]), row=1, col=1)
+            chr_combined_fig.add_trace(go.Scatter(x=x, y=y, mode='lines', fill='tozeroy', name=f'{chrom}', legendgroup='group',visible=chrom==chromosomes[0]), row=3, col=1)
+
+    chrom_df = vaf_df[vaf_df['Chromosome'] == chrom]
+    fig_vaf.add_trace(go.Scatter(x=chrom_df.index, y=chrom_df['VAF'], mode='markers', name=f'{chrom}'))
+    fig_vaf_ind.add_trace(go.Scatter(x=chrom_df.index, y=chrom_df['VAF'], mode='markers', name=f'{chrom}', visible=chrom==chromosomes[0]), row=1, col=1)
+
+    norm_df = df[df['Chromosome'] == chrom]
+    fig_norm_cov.add_trace(go.Scatter(x=norm_df.index, y=norm_df['NormalizedCoverage'], mode='markers', name=f'{chrom}'))
+    fig_norm_ind.add_trace(go.Scatter(x=norm_df.index, y=norm_df['NormalizedCoverage'], mode='markers', name=f'{chrom}', visible=chrom==chromosomes[0]), row=1, col=1)
+
+    combined_fig.add_trace(go.Scatter(x=chrom_df.index, y=chrom_df['VAF'], mode='markers', name=f'{chrom}', legendgroup='group', marker_color = colors[i]), row=1, col=1)
+    combined_fig.add_trace(go.Scatter(x=norm_df.index, y=norm_df['NormalizedCoverage'], mode='markers', name=f'{chrom}', legendgroup='group', marker_color = colors[i], showlegend=False), row=2, col=1)
+    chr_combined_fig.add_trace(go.Scatter(x=chrom_df.index, y=chrom_df['VAF'], mode='markers', name=f'{chrom}',legendgroup='group',visible=chrom==chromosomes[0]), row=1, col=1)
+    chr_combined_fig.add_trace(go.Scatter(x=norm_df.index, y=norm_df['NormalizedCoverage'], mode='markers', name=f'{chrom}', legendgroup='group',visible=chrom==chromosomes[0]), row=2, col=1)
+
+    type_colors = {
+    'DUP': 'rgb(255, 0, 0)',
+    'DEL': 'rgb(0, 255, 0)',
+    'CNLOH': 'rgb(0, 0, 255)'
+    }
+
+    # plot cna by chromosome
+    if not data_dfs.empty and not data_dfs[data_dfs['chrom1'] == chrom].empty:
+        data_cna = data_dfs[data_dfs['chrom1'] == chrom]
+
+        for subset_index, subset_row in data_cna.iterrows():
+            pos1 = int(subset_row['pos1'])
+            pos2 = int(subset_row['pos2'])
+            filtered_df = norm_df[(norm_df["Start"] >= pos1) & (norm_df["End"] <= pos2) & (norm_df["NormalizedCoverage"] < 1) & (norm_df["NormalizedCoverage"] > -1)]
+            combined_fig.add_trace(go.Scatter(x=filtered_df.index, y=filtered_df['NormalizedCoverage'], mode='markers', name=f"{subset_row['type']} on {subset_row['chrom1']}", marker_color = type_colors[subset_row['type']], hoverinfo='text', 
+            text=f"{subset_row['type']} on {subset_row['chrom1']}",showlegend=False), row=3, col=1)
+margin = dict(l=50, r=50, t=50, b=50)
+fig_norm_ind.update_yaxes(range=[-5, 5])
+combined_fig.update_yaxes(range=[-1.5, 1.5], row=2, col=1)
+combined_fig.update_yaxes(range=[-1.5, 1.5], row=3, col=1)
+combined_fig.update_layout(height=600, yaxis_title="VAF", yaxis2_title="Norm Cov", yaxis3_title="CNAs", xaxis3_title="index",margin=margin)
+
+# Add titles and axes
+fig_vaf.update_layout(xaxis_title="Index", yaxis_title="VAF")
+fig_norm_cov.update_layout(xaxis_title="Index", yaxis_title="Normalized Coverage")
+fig_vaf_ind.update_layout(xaxis_title="Index", yaxis_title="VAF", updatemenus=[{'buttons': buttons}])
+fig_norm_ind.update_layout(xaxis_title="Index", yaxis_title="Normalized Coverage", updatemenus=[{'buttons': buttons}])
+fig_dens_all.update_layout(height=600, xaxis_title='VAF', yaxis_title='Density',margin=margin)
+fig_dens_ind.update_layout(xaxis_title='VAF', yaxis_title='Density', updatemenus=[{'buttons': buttons}])
+
+
+# Update trace visibility
+Ld = len(chr_combined_fig.data)
+Lc = len(chromosomes)
+
+# Initially hide all traces
+for k in range(3, Ld):  # Adjusted range to match the number of traces per chromosome
+    chr_combined_fig.update_traces(visible=False, selector=k)
+
+# Define a function to create layout buttons
+def create_layout_button(k, chromosome):
+    visibility = [False] * Ld
+    for tr in range(3):
+        visibility[3 * (k - 1) + tr] = True
+    return dict(label=str(chromosome),
+                method='restyle',
+                args=[{'visible': visibility}])
+
+# Create layout buttons for each chromosome
+buttons = [create_layout_button(k + 1, chrom) for k, chrom in enumerate(chromosomes)]
+
+# Update layout with the update menu
+chr_combined_fig.update_layout(
+    updatemenus=[{'buttons': buttons}],
+    height=800,
+    showlegend=False,
+    yaxis_title="VAF", 
+    yaxis2_title="Norm Cov", 
+    yaxis3_title="Density", 
+    xaxis3_title="VAF",
+    xaxis1_title="index",
+    xaxis2_title="index",
+    margin=margin
+)
+
+with open(r.params['txt'], "r") as file:
+    line1 = next(file).strip()
+    line2 = next(file).strip()
+    line3 = next(file).strip()
+    line4 = next(file).strip()
+    line5 = next(file).strip()
+    line6 = next(file).strip()
+    line7 = next(file).strip()
+    line8 = next(file).strip()
+    line9 = next(file).strip()
+    line10 = next(file).strip()
+    line11 = next(file).strip()
+    line12 = next(file).strip()
+report = line1.split('---- ')[0] + ','
+date = line1.split('---- ')[1]
+```
+### `r reticulate::py_eval("date")`
+```{python}
+from IPython.display import Markdown
+from tabulate import tabulate
+import sys
+
+with open(r.params['txt'], 'r') as file:
+    lines = file.readlines()
+
+in_case_info_section = False
+in_sqc_section = False
+in_pp_section = False
+in_cn_section = False
+in_rsv_section = False
+in_gm_section = False
+in_fg_section = False
+in_svcnv_section = False
+in_failed_exons_section = False
+in_failed_gqc_section = False
+in_hce_section = False
+chromoseq_case_info_section = []
+sqc_section = []
+pp_section = []
+cn_section = []
+rsv_section = []
+gm_section = []
+fg_section = []
+svcnv_section = []
+failed_exons_section = []
+failed_gqc_section = []
+hce_section = []
+
+
+for line in lines:
+    if "*** CHROMOSEQ CASE INFORMATION ***" in line:
+        in_case_info_section = True
+    elif "***" in line and in_case_info_section:
+        in_case_info_section = False
+    elif in_case_info_section:
+        chromoseq_case_info_section.append(line)
+
+    if "*** SEQUENCING QC ***" in line:
+        in_sqc_section = True
+    elif "***" in line and in_sqc_section:
+        in_sqc_section = False
+    elif in_sqc_section:
+        sqc_section.append(line)
+
+    if "*** PLOIDY AND PURITY ***" in line:
+        in_pp_section = True
+    elif "***" in line and in_pp_section:
+        in_pp_section = False
+    elif in_pp_section:
+        pp_section.append(line)
+
+    if "*** COPY NUMBER ALTERATIONS ***" in line:
+        in_cn_section = True
+    elif "***" in line and in_cn_section:
+        in_cn_section = False
+    elif in_cn_section:
+        cn_section.append(line)
+    
+    if "*** RECURRENT STRUCTURAL VARIANTS ***" in line:
+        in_rsv_section = True
+    elif "***" in line and in_rsv_section:
+        in_rsv_section = False
+    elif in_rsv_section:
+        rsv_section.append(line)
+
+    if "*** GENE MUTATIONS ***" in line:
+        in_gm_section = True
+    elif "***" in line and in_gm_section:
+        in_gm_section = False
+    elif in_gm_section:
+        gm_section.append(line)
+
+    if "*** FILTERED GENE MUTATIONS ***" in line:
+        in_fg_section = True
+    elif "***" in line and in_fg_section:
+        in_fg_section = False
+    elif in_fg_section:
+        fg_section.append(line)
+
+    if "*** NOVEL/FILTERED SV AND CNV VARIANTS ***" in line:
+        in_svcnv_section = True
+    elif "***" in line and in_svcnv_section:
+        in_svcnv_section = False
+    elif in_svcnv_section:
+        svcnv_section.append(line)
+    
+    if "*** FAILED EXONS ***" in line:
+        in_failed_exons_section = True
+    elif "***" in line and in_failed_exons_section:
+        in_failed_exons_section = False
+    elif in_failed_exons_section:
+        failed_exons_section.append(line)
+
+    if "*** FAILED GENE QC ***" in line:
+        in_failed_gqc_section = True
+    elif "***" in line and in_failed_gqc_section:
+        in_failed_gqc_section = False
+    elif in_failed_gqc_section:
+        failed_gqc_section.append(line)
+    
+    if "*** Haplotect Contamination Estimate ***" in line:
+        in_hce_section = True
+    elif "***" in line and in_hce_section:
+        in_hce_section = False
+    elif in_hce_section:
+        hce_section.append(line)
+
+case_info_data = []
+sqc_data = []
+pp_data = []
+cn_data = []
+rsv_data = []
+gm_data = []
+fg_data = []
+svcnv_data = []
+failed_exons_data = []
+failed_gqc_data = []
+hce_1 = []
+hce_2 = []
+
+for line in chromoseq_case_info_section:
+    if line != "\n":
+        case_info_data.append([line.split(':')[0],line.split(':')[1]])
+for line in sqc_section:
+    if line != "\n":
+        sqc_data.append([line.split(':')[0],line.split(':')[1]])
+for line in pp_section:
+    if line != "\n":
+        pp_data.append([line.split(':')[0],line.split(':')[1]])
+for line in cn_section:
+    if line != "\n":
+        if "None Detected" in line:
+            cn_data.append(["None Detected"])
+            break
+        cn_data.append(line.strip('\n').split('\t'))
+for line in rsv_section:
+    if line != "\n":
+        if "None Detected" in line:
+            rsv_data.append(["None Detected"])
+            break
+        rsv_data.append(line.strip('\n').split('\t'))
+for line in gm_section:
+    if line != "\n":
+        if "None Detected" in line:
+            gm_data.append(["None Detected"])
+            break
+        gm_data.append(line.strip('\n').split('\t'))
+for line in fg_section:
+    if line != "\n":
+        if "None Detected" in line:
+            fg_data.append(["None Detected"])
+            break
+        fg_data.append(line.strip('\n').split('\t'))
+for line in svcnv_section:
+    if line != "\n":
+        if "None Detected" in line:
+            svcnv_data.append(["None Detected"])
+            break
+        svcnv_data.append(line.strip('\n').split('\t'))
+for line in failed_exons_section:
+    if line != "\n":
+        if "None Detected" in line:
+            failed_exons_data.append(["None Detected"])
+            break
+        failed_exons_data.append(line.strip('\n').split('\t'))
+for line in failed_gqc_section:
+    if line != "\n":
+        if "None Detected" in line:
+            failed_gqc_data.append(["None Detected"])
+            break
+        failed_gqc_data.append(line.strip('\n').split('\t'))
+for line in hce_section[0:3]:
+    if line != "\n":
+        hce_1.append(line.strip('\n').split('\t'))
+for line in hce_section[3:]:
+    if line != "\n":
+        hce_2.append(line.strip('\n').split('\t'))
+```
+### Chromoseq Case Information 
+```{python}
+Markdown(tabulate(case_info_data))
+```
+
+### VAF and Normalized Coverage Plots
+```{python}
+combined_fig.show()
+```
+
+### Density for all Chromosomes
+```{python}
+fig_dens_all.show()
+```
+### VAF, Normalized Coverage, and Density per Chromosome
+```{python}
+chr_combined_fig.show()
+```
+
+### Sequencing QC
+```{python}
+Markdown(tabulate(sqc_data))
+```
+
+### Ploidy and Purity
+```{python}
+Markdown(tabulate(pp_data))
+```
+### Copy Number Alterations
+```{python}
+if len(cn_data) == 1:
+    Markdown(tabulate(cn_data))
+else:
+    Markdown(tabulate(cn_data[1:],headers=cn_data[0]))
+```
+
+### Recurrent Structural Variants 
+```{python}
+if len(rsv_data) == 1:
+    Markdown(tabulate(rsv_data))
+else:
+    Markdown(tabulate(rsv_data[1:],headers=rsv_data[0]))
+
+```
+
+### Gene Mutations
+```{python}
+if len(gm_data) == 1:
+    Markdown(tabulate(gm_data))
+else:
+    Markdown(tabulate(gm_data[1:],headers=gm_data[0]))
+```
+
+### Filtered Gene Mutations
+```{python}
+if len(fg_data) == 1:
+    Markdown(tabulate(fg_data))
+else:
+    Markdown(tabulate(fg_data[1:],headers=fg_data[0]))
+```
+
+### Novel/Filtered SV and CNV Variants
+```{python}
+if len(svcnv_data) == 1:
+    Markdown(tabulate(svcnv_data))
+else:
+    Markdown(tabulate(svcnv_data[1:],headers=svcnv_data[0]))
+```
+
+### Failed Exons
+```{python}
+if len(failed_exons_data) == 1:
+    Markdown(tabulate(failed_exons_data))
+else:
+    Markdown(tabulate(failed_exons_data[1:],headers=failed_exons_data[0]))
+```
+
+### Failed Gene QC
+```{python}
+if len(failed_gqc_data) == 1:
+    Markdown(tabulate(failed_gqc_data))
+else:
+    Markdown(tabulate(failed_gqc_data[1:],headers=failed_gqc_data[0]))
+```
+### Haplotect Contamination Estimate
+```{python}
+Markdown(tabulate(hce_1[1:],headers=hce_1[0]))
+Markdown(tabulate(hce_2[1:],headers=hce_2[0]))
+```
