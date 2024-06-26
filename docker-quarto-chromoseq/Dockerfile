@@ -9,4 +9,5 @@ RUN micromamba install -y -n base -f /tmp/env.yaml \
     && micromamba clean --all --yes \
     && rm -rf /opt/conda/conda-meta /tmp/env.yaml
 
+
 RUN ["chmod", "777", "/scripts/CoveragePlots.qmd"]
