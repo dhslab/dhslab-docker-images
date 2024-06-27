@@ -31,7 +31,7 @@ RUN R -e "install.packages('BiocManager'); BiocManager::install(version = '3.19'
 
 # Install required R and Bioconductor packages
 RUN R -e "install.packages(c('argparse', 'data.table')); \
-    BiocManager::install(c('HDF5Array', 'bsseq', 'DSS', 'GenomicRanges', 'IRanges'))"
+    BiocManager::install(c('HDF5Array', 'bsseq', 'DSS', 'GenomicRanges', 'IRanges', 'methylKit'))"
 
 # Entry point for the container
 CMD ["bash"]
