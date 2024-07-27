@@ -43,6 +43,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     git-lfs \
     smbclient \
     groff \
+    mailutils
     && apt-get clean all
 
 #set timezone to CDT
