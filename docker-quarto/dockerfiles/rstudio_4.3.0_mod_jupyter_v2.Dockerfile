@@ -51,7 +51,7 @@ RUN echo "server-user=${DEFAULT_USER}" >> /etc/rstudio/rserver.conf
 
 # Extra packages for R
 RUN sudo apt-get update && \
-    sudo apt-get -y install libz-dev libbz2-dev liblzma-dev libxml2 libxml2-dev libxt6 libglpk-dev libmysqlclient21 gzip less wget gawk grep libnss-sss && \
+    sudo apt-get -y install libdeflate-dev libbz2-dev liblzma-dev libpcre2-dev libicu-dev libz-dev libbz2-dev liblzma-dev libxml2 libxml2-dev libxt6 libglpk-dev libmysqlclient21 gzip less wget gawk grep libnss-sss && \
     sudo apt-get clean
 
 # Install conda (mamba version) with Jupyter
