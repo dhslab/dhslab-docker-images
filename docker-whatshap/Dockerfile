@@ -1,6 +1,6 @@
 FROM ghcr.io/dhslab/docker-python3:latest
 
-LABEL Image with htslib, samtools and whatshap
+LABEL Image with python, htslib, samtools and whatshap
 
 # update as needed
 RUN apt-get update -y && apt-get install -y --no-install-recommends wget
