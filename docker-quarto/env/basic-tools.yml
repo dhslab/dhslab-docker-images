@@ -21,6 +21,6 @@ dependencies:
   - pyranges
   - cyvcf2
   - cython
-  - r
+  - r==4.4.0
   - r-essentials
   - rpy2
