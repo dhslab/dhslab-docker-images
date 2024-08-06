@@ -31,6 +31,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     g++ \
     git \
     less \
+    libcurl4 \
     libcurl4-openssl-dev \
     libssl-dev \
     libxml2-dev \
@@ -44,7 +45,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     file \
     g++ \
     libbz2-1.0 \
-    libcurl3 \
     libicu55 \
     libopenblas-dev \
     liblzma5 \
@@ -52,7 +52,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     zlib1g \
     libbz2-dev \
     libcairo2-dev \
-    libcurl4-openssl-dev \
     libpango1.0-dev \
     libicu-dev \
     libreadline-dev \
