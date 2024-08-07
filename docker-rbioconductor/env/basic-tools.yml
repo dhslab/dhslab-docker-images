@@ -1,0 +1,41 @@
+name: basic-tools
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python
+  - ipykernel
+  - pandas
+  - numpy
+  - matplotlib
+  - seaborn
+  - pybedtools
+  - bedtools
+  - bcftools
+  - htslib
+  - samtools
+  - tabulate
+  - deeptools
+  - pip
+  - adjustText
+  - Jinja2
+  - openpyxl
+  - scikit-misc
+  - scikit-learn
+  - zlib
+  - pip:
+    - polars
+    - pyranges
+    - diptest
+    - gtfparse
+    - lets-plot
+    - openai
+    - langchain-openai
+    - jupyter-ai[all]
+    - python-docx
+    - shiny
+    - figeno
+    - pypandoc_binary 
+    - cairosvg
+    - rpy2
