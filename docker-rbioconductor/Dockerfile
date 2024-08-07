@@ -21,11 +21,11 @@ RUN apt-get update && apt-get -y install \
     libcurl4-openssl-dev && \
     apt-get clean
 
-# Install Bioconductor packages
-RUN R -e "install.packages('BiocManager'); BiocManager::install(version = '3.19')"
+# Install basic  R packages
+RUN R -e "install.packages(c('argparse', 'data.table', 'dplyr', 'tidyverse', 'tidyr', 'stringr', 'purrr', 'readr', 'vcfR'))"
 
-# Install required R and Bioconductor packages
-RUN R -e "install.packages(c('argparse', 'data.table', 'dplyr', 'tidyverse', 'vcfR'))"
+# Install Bioconductor and packages
+RUN R -e "install.packages('BiocManager'); BiocManager::install(version = '3.19')"
 RUN R -e "BiocManager::install(c('HDF5Array', 'bsseq', 'DSS', 'GenomicRanges', 'IRanges', 'methylKit'))"
 
 ARG MAMBA_VERSION="24.3.0-0"
