@@ -1,6 +1,6 @@
 FROM ghcr.io/dhslab/docker-htslib:latest
 
-LABEL Basic image with htslib, samtools and mosdepth
+LABEL Basic image with htslib, samtools and mosdepth for bioinformatics
 
 ENV DEBIAN_FRONTEND=noninteractive
 
