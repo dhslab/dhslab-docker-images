@@ -35,7 +35,7 @@ COPY env/*.yml /tmp/
 RUN curl -L -O "https://github.com/conda-forge/miniforge/releases/download/${MAMBA_VERSION}/Miniforge3-$(uname)-$(uname -m).sh" && \
     bash Miniforge3-$(uname)-$(uname -m).sh -f -b -p /opt/conda && \
     rm -f Miniforge3-$(uname)-$(uname -m).sh && \
-    $CONDA_DIR/bin/mamba install -y -f /tmp/basic-tools.yml && \
+    $CONDA_DIR/bin/mamba env update -n base -f /tmp/basic-tools.yml && \
     $CONDA_DIR/bin/conda clean -y --all
 
 # Entry point for the container
