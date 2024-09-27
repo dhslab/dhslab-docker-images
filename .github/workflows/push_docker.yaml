@@ -45,6 +45,9 @@ jobs:
   push-docker-image:
     needs: get-container-names
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.get-container-names.outputs.matrix) }}
