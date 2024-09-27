@@ -53,8 +53,8 @@ RUN pip install numpy && \
     pip install pysam && \
     pip install pyranges && \
     pip install scipy && \
-    pip install biopython && \
-    pip install openpyxl
+    pip install openpyxl && \
+    pip install biopython
 
 RUN ln -s $(which python3) /usr/local/bin/python
 
