@@ -1,4 +1,4 @@
-ROM ubuntu:focal-20221130
+FROM ubuntu:focal-20221130
 
 LABEL version="1.0"
 LABEL description="Image for methfast"
