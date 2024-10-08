@@ -44,7 +44,7 @@ RUN dpkg-reconfigure --frontend noninteractive tzdata
 
 # get dhslab/methfast from github
 WORKDIR /tmp/
-RUN wget https://github.com/dhslab/methfast/archive/refs/tags/methfast-0.1.tar.gz && \
+RUN wget --no-check-certificate https://github.com/dhslab/methfast/archive/refs/tags/methfast-0.1.tar.gz && \
     tar -xvf methfast-0.1.tar.gz && \
     cd methfast-methfast-0.1 && \
     make && make install && \
