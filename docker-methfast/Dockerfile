@@ -46,7 +46,7 @@ RUN dpkg-reconfigure --frontend noninteractive tzdata
 # Clone the repository
 # Set the working directory to the repository's root
 WORKDIR /tmp
-RUN git clone https://github.com/dhslab/methfast.git && 
+RUN git clone https://github.com/dhslab/methfast.git && \
     cd methfast && \
     make && \
     make install
