@@ -35,6 +35,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     grep \
     evince \
     libnss-sss \
+    ca-certificates \
     && apt-get clean all
 
 #set timezone to CDT
@@ -43,10 +44,9 @@ RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
 
 # Clone the repository
-RUN git clone https://github.com/dhslab/methfast.git /opt/methfast
-
 # Set the working directory to the repository's root
-WORKDIR /opt/methfast
-
-# Build and install
-RUN make && make install
+WORKDIR /tmp
+RUN git clone https://github.com/dhslab/methfast.git && 
+    cd methfast && \
+    make && \
+    make install
