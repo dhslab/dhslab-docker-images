@@ -42,12 +42,11 @@ RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
 
-# get dhslab/methfast from github
-WORKDIR /tmp/
-RUN wget --no-check-certificate https://github.com/dhslab/methfast/archive/refs/tags/methfast-0.1.tar.gz && \
-    tar -zxvf methfast-0.1.tar.gz && \
-    cd methfast-methfast-0.1 && \
-    make && make install && \
-    rm -rf /tmp/methfast-0.1.tar.gz /tmp/methfast-methfast-0.1
+# Clone the repository
+RUN git clone https://github.com/dhslab/methfast.git /opt/methfast
 
-    
+# Set the working directory to the repository's root
+WORKDIR /opt/methfast
+
+# Build and install
+RUN make && make install
