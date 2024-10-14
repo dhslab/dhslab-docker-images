@@ -1,5 +1,5 @@
 FROM ontresearch/dorado@sha256:e70f10b2c11e8b772edf00d07107e8dec8da281a49e90f8908aa68085959a34d
-LABEL description="Image with dorado"
+LABEL description="Image with dorado and all models"
 USER root
 # Install essential packages
 RUN sudo mkdir -p /opt/dorado/models && \
