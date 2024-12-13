@@ -1,4 +1,4 @@
-FROM ontresearch/dorado@sha256:2c9f8b2b21966f16479e66569c506fc81eedc31db7719f88892544857103dcbb
+FROM ontresearch/dorado@sha256:d5a340e6d5528ef61eee9cfcacbce01c6b7eefa1456c526f8630886e5087a7c5
 LABEL description="Image with dorado and all models"
 USER root
 # Install essential packages
