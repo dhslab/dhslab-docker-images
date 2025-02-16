@@ -1,6 +1,6 @@
 FROM ubuntu:focal-20221130
 
-LABEL version="1.0"
+LABEL version="2.0"
 LABEL description="Image for methfast"
 
 ENV DEBIAN_FRONTEND=noninteractive
