@@ -1,11 +1,11 @@
-FROM ubuntu:20.04
+FROM ubuntu:focal-20221130
 
 LABEL maintainer="Andrew Bonney abonney@wustl.edu"
 LABEL description="Docker image for HiCorr micro-C/Hi-C analysis"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install basic system dependencies
+# Install essential packages
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential \
     bzip2 \
@@ -18,37 +18,38 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     libssl-dev \
     make \
     perl \
-    python3 \
-    python3-dev \
-    python3-pip \
     wget \
     zlib1g-dev \
     libbz2-dev \
     liblzma-dev \
-    bedtools \
-    bowtie \
-    samtools \
     && apt-get clean all \
     && rm -rf /var/lib/apt/lists/*
 
-# Install required Perl modules
-RUN cd /opt/ \
-    && curl https://raw.github.com/miyagawa/cpanminus/master/cpanm > cpanm \
-    && chmod +x cpanm \
-    && ln -s /opt/cpanm /usr/local/bin/ \
-    && cpanm install Statistics::Basic \
-    && cpanm install JSON \
-    && cpanm install List::Util \
-    && cpanm install YAML::Tiny
+# Install conda (mamba version)
+ENV CONDA_DIR /opt/conda
+RUN cd /tmp && mkdir -p $CONDA_DIR && \
+    wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
+    bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
+    rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh
 
-# Install Python packages
-RUN pip3 install numpy pandas scipy
+# Install required packages via conda
+RUN $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda \
+    bedtools \
+    bowtie \
+    samtools \
+    numpy \
+    pandas \
+    scipy \
+    perl-statistics-basic \
+    perl-json \
+    perl-yaml-tiny \
+    && $CONDA_DIR/bin/conda clean -y --all
+
+# Link conda binaries
+RUN ln -s /opt/conda/bin/* /usr/local/bin/
 
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Set up entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod 755 /entrypoint.sh && \
-    chown root:root /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
+# Set locale
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
