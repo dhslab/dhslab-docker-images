@@ -28,7 +28,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
 # Install conda (mamba version)
 ENV CONDA_DIR /opt/conda
 RUN cd /tmp && mkdir -p $CONDA_DIR && \
-    wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
+    wget --no-check-certificate "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
     bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
     rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh
 
