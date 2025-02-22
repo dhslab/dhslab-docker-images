@@ -57,7 +57,7 @@ RUN cd /tmp && mkdir -p $CONDA_DIR && \
     wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
     bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
     rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh && \
-    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda bcftools==1.20 htslib==1.20 samtools==1.20 pandas==2.0.2 bedtools=2.31 pybedtools==0.9.0 openpyxl==3.1.2 scipy==1.11.4 cython cyvcf2==0.30.28 pysam==0.22.1 statsmodels pyranges==0.0.129 pybigwig globus-cli nf-core nextflow==24.04.4 SQLAlchemy biotite pyodbc pybigtools bigtools vcftools && \
+    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda python=3.11 bcftools==1.20 htslib==1.20 samtools==1.20 pandas==2.0.2 bedtools=2.31 pybedtools==0.9.0 openpyxl==3.1.2 scipy==1.11.4 cython cyvcf2==0.30.28 pysam==0.22.1 statsmodels pyranges==0.0.129 pybigwig globus-cli nf-core nextflow==24.04.4 SQLAlchemy biotite pyodbc pybigtools bigtools vcftools && \
     $CONDA_DIR/bin/conda clean -y --all && \
     ln -s /opt/conda/bin/* /usr/local/bin/
 
