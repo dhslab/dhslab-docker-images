@@ -21,8 +21,6 @@ RUN wget https://github.com/samtools/htslib/releases/download/1.21/htslib-1.21.t
     make && \
     make install && \
     cp $HTSLIB_INSTALL_DIR/lib/libhts.so* /usr/lib/ && \
-    ln -s $HTSLIB_INSTALL_DIR/bin/tabix /usr/local/bin/tabix && \
-    ln -s $HTSLIB_INSTALL_DIR/bin/bgzip /usr/bin/local/bgzip && \
     rm -Rf /tmp/htslib-1.21
 
 ################
