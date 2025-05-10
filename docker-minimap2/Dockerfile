@@ -32,10 +32,12 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     curl \
     tzdata \
     gawk \
+    git \
     openssh-client \
     grep \
     evince \
     libnss-sss \
+    ca-certificates \
     && apt-get clean all
 
 #set timezone to CDT
@@ -43,15 +45,12 @@ RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
 
-# Install conda (mamba version)
-ENV CONDA_DIR /opt/conda
-RUN cd /tmp && mkdir -p $CONDA_DIR && \
-    wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
-    bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
-    rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh && \
-    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda htslib==1.21 samtools==1.21 bedtools=2.31 && \
-    $CONDA_DIR/bin/conda clean -y --all && \
-    ln -s /opt/conda/bin/* /usr/local/bin/
+RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2 && \
+    tar -xvf samtools-1.21.tar.bz2 && \
+    cd samtools-1.21 && \
+    ./configure --prefix=/usr/local && \
+    make && make install && \
+    cd .. && rm -rf samtools-1.21.tar.bz2 samtools-1.21
 
 RUN cd /opt/ && \
     git clone https://github.com/lh3/minimap2 && \
