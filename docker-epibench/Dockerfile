@@ -14,6 +14,7 @@ RUN apt-get update -y && \
     wget \
     unzip \
     tzdata \
+    ca-certificates \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -23,7 +24,7 @@ RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime && \
     dpkg-reconfigure --frontend noninteractive tzdata
 
 # Install conda (mamba version)
-ENV CONDA_DIR /opt/conda
+ENV CONDA_DIR=/opt/conda
 RUN curl -L -O "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
     bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
     rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh
