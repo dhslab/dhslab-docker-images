@@ -13,36 +13,32 @@ RUN apt-get update -y && \
     git \
     wget \
     unzip \
+    tzdata \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 #set timezone to CDT
-RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
-RUN echo "America/Chicago" > /etc/timezone
-RUN dpkg-reconfigure --frontend noninteractive tzdata
+RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime && \
+    echo "America/Chicago" > /etc/timezone && \
+    dpkg-reconfigure --frontend noninteractive tzdata
 
 # Install conda (mamba version)
 ENV CONDA_DIR /opt/conda
-RUN cd /tmp && mkdir -p $CONDA_DIR && \
-    wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
+RUN curl -L -O "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
     bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
-    rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh && \
-    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda python=3.11 pandas openpyxl cython globus-cli SQLAlchemy biotite pyodbc boto3 && \
-    $CONDA_DIR/bin/conda clean -y --all && \
-    ln -s /opt/conda/bin/* /usr/local/bin/
+    rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh
 
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && ./aws/install
-
-# Add conda to PATH
+# Add conda to PATH for subsequent RUN instructions
 ENV PATH=$CONDA_DIR/bin:$PATH
 
-# Install EpiBench dependencies and other useful tools
+# Install Python dependencies, EpiBench dependencies, and other useful tools in a single layer
 RUN mamba install -y -c pytorch -c bioconda -c conda-forge \
+    python=3.11 \
     'pytorch>=1.12.0' cpuonly \
     'captum>=0.5.0' \
     'numpy>=1.21.0' \
     'pandas>=1.3.0' \
+    openpyxl \
     'scipy>=1.7.0' \
     'scikit-learn>=1.0.0' \
     'h5py>=3.1.0' \
@@ -52,6 +48,7 @@ RUN mamba install -y -c pytorch -c bioconda -c conda-forge \
     'biopython>=1.79' \
     'pybigwig>=0.3.18' \
     'pyfaidx>=0.6.4' \
+    cython \
     'shap>=0.40.0' \
     'optuna>=3.0.0' \
     'tensorboard>=2.10.0' \
@@ -67,8 +64,19 @@ RUN mamba install -y -c pytorch -c bioconda -c conda-forge \
     'rich>=12.0.0' \
     'pytest>=7.0.0' \
     'tabulate>=0.8.9' \
-    bedtools && \
-    mamba clean -y --all
+    bedtools \
+    globus-cli \
+    SQLAlchemy \
+    biotite \
+    pyodbc \
+    boto3 \
+    && mamba clean -y --all
+
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws
 
 # ucsc utilities
 RUN mkdir -p /tmp/ucsc && \
@@ -84,6 +92,4 @@ WORKDIR /opt/epibench
 RUN pip install .
 
 # Set default work directory
-WORKDIR /data
-
-ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/conda/bin 
+WORKDIR /data 
