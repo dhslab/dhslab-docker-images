@@ -90,7 +90,7 @@ RUN mkdir -p /tmp/ucsc && \
 # Clone and install EpiBench
 RUN git clone https://github.com/Bonney96/epibench.git /opt/epibench
 WORKDIR /opt/epibench
-RUN pip install .
+RUN pip install -e .
 
 # Set default work directory
 WORKDIR /data 
