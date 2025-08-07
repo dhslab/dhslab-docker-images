@@ -6,7 +6,7 @@ LABEL description="Image with basic bioinformatics tools"
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install essential packages
-#some basic tools
+# some basic tools
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential \
     bzip2 \
@@ -33,6 +33,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     curl \
     tzdata \
     emacs \
+    nano \
     gawk \
     openssh-client \
     grep \
@@ -43,8 +44,19 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     git-lfs \
     smbclient \
     groff \
-    mailutils \
+    gnupg \
+    unixodbc-dev \
     && apt-get clean all
+
+
+# 2. Add Microsoft's official repository
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+
+# 3. Install the driver and clean up
+RUN apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql18 && \
+    rm -rf /var/lib/apt/lists/*
 
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
@@ -57,7 +69,7 @@ RUN cd /tmp && mkdir -p $CONDA_DIR && \
     wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
     bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
     rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh && \
-    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda python=3.11 bcftools==1.21 htslib==1.21 samtools==1.21 pandas bedtools=2.31 pybedtools openpyxl scipy cython cyvcf2 pysam statsmodels pyranges pybigwig globus-cli nf-core nextflow==24.04.4 SQLAlchemy biotite pyodbc pybigtools bigtools vcftools && \
+    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda python=3.11 bcftools==1.21 htslib==1.21 samtools==1.21 pandas bedtools=2.31 pybedtools openpyxl scipy cython cyvcf2 pysam statsmodels pyranges bamread pybigwig globus-cli nf-core nextflow==24.04.4 SQLAlchemy biotite pyodbc pybigtools bigtools vcftools sqlalchemy && \
     $CONDA_DIR/bin/conda clean -y --all && \
     ln -s /opt/conda/bin/* /usr/local/bin/
 

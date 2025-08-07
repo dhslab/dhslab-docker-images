@@ -2,6 +2,21 @@ FROM ghcr.io/dhslab/docker-rbase3.6.0
 
 LABEL description="Container with ichorCNA"
 
+# install samtools
+ENV SAMTOOLS_INSTALL_DIR=/opt/samtools
+
+WORKDIR /tmp
+RUN wget --no-check-certificate https://github.com/samtools/samtools/releases/download/1.22/samtools-1.22.tar.bz2 && \
+    tar --bzip2 -xf samtools-1.22.tar.bz2 && \
+    cd /tmp/samtools-1.22 && \
+    ./configure --prefix=$SAMTOOLS_INSTALL_DIR && \
+    make && \
+    make install && \
+    ln -s /opt/samtools/bin/* /usr/local/bin/ && \
+    cd / && \
+    rm -rf /tmp/samtools-1.22
+
+
 ############
 # ichorCNA #
 ############
