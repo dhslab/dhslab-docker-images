@@ -7,6 +7,7 @@ on:
 
 jobs:
   # This job discovers which service directories have changed.
+# This job discovers which service directories have changed.
   determine-build-matrix:
     runs-on: ubuntu-latest
     outputs:
@@ -15,7 +16,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Fetch all history so tj-actions/changed-files can compare commits
           fetch-depth: 0
 
       - name: Get changed files
@@ -24,13 +24,11 @@ jobs:
 
       - name: Create build matrix for changed services
         id: create-matrix
-        # Using jq is more robust and readable than manual string manipulation.
-        # GitHub runners have jq pre-installed.
         run: |
           paths=$(echo '${{ steps.changed-files.outputs.all_changed_files }}' | xargs -n1 dirname | sort -u)
-          matrix=$(echo "$paths" | jq -R '{"include": [{"path": .}]}' | jq -s 'add')
+          matrix=$(echo "$paths" | jq -R '{"path": .}' | jq -cs '{"include": .}')
           echo "matrix=${matrix}" >> $GITHUB_OUTPUT
-
+          
   # This job builds and pushes images based on the matrix from the previous job.
   build-and-push:
     needs: determine-build-matrix
