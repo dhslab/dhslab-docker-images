@@ -28,8 +28,19 @@ jobs:
       - name: Create build matrix for changed services
         id: create-matrix
         run: |
-          paths=$(echo '${{ steps.changed-files.outputs.all_changed_files }}' | xargs -n1 dirname | sort -u)
-          matrix=$(echo "$paths" | jq -R '{"path": .}' | jq -cs '{"include": .}')
+          # Get the list of changed Dockerfiles into a variable
+          changed_dockerfiles='${{ steps.changed-files.outputs.all_changed_files }}'
+          
+          # Check if the list of changed files is empty
+          if [[ -z "$changed_dockerfiles" ]]; then
+            # If it's empty, create an empty matrix and finish
+            matrix='{"include":[]}'
+          else
+            # If files were changed, get their directory paths and create the matrix
+            paths=$(echo "$changed_dockerfiles" | xargs -n1 dirname | sort -u)
+            matrix=$(echo "$paths" | jq -R '{"path": .}' | jq -cs '{"include": .}')
+          fi
+          
           echo "matrix=${matrix}" >> $GITHUB_OUTPUT
           
   # This job builds and pushes images based on the matrix from the previous job.
