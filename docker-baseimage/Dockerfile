@@ -46,6 +46,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     groff \
     gnupg \
     unixodbc-dev \
+    valgrind \
     && apt-get clean all
 
 
