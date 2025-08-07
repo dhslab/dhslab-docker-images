@@ -5,7 +5,7 @@
 FROM ubuntu:focal
 
 # Set a working directory inside the container
-WORKDIR /opt/
+WORKDIR /tmp/
 
 # Install build dependencies for htslib and covfast
 # - build-essential: provides gcc, make, etc.
@@ -23,9 +23,7 @@ RUN apt-get update && \
     libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the source code and Makefile into the container
-COPY covfast.c .
-COPY Makefile .
-
-# Build and install the application using the Makefile's 'install' target
-RUN make install && make clean
+RUN wget https://github.com/dhslab/covfast/archive/refs/tags/v0.1.tar.gz && \
+    tar -xvzf v0.1.tar.gz && \
+    cd covfast-0.1 && \
+    make all && make install && make clean
