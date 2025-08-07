@@ -26,7 +26,7 @@ RUN apt-get update && \
     libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
-RUN wget https://github.com/dhslab/covfast/archive/refs/tags/v0.4.tar.gz && \
-    tar -xvzf v0.4.tar.gz && \
-    cd covfast-0.4 && \
+RUN wget https://github.com/dhslab/covfast/archive/refs/tags/v0.5.tar.gz && \
+    tar -xvzf v0.5.tar.gz && \
+    cd covfast-0.5 && \
     make all && make install && make clean
