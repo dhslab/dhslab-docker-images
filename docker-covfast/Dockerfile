@@ -2,7 +2,7 @@
 # This builds the tool from source using the provided Makefile.
 
 # Use Ubuntu 20.04 (Focal Fossa) as the base image
-FROM ubuntu:focal
+FROM ubuntu:focal-20221130
 
 # Set a working directory inside the container
 WORKDIR /tmp/
