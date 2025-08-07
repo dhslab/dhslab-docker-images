@@ -1,6 +1,6 @@
-FROM ensemblorg/ensembl-vep:release_113.0
+FROM ensemblorg/ensembl-vep:release_114.0
 
-LABEL vep113 and htslib1.21 image
+LABEL vep114 and htslib1.21 image
 
 USER root
 RUN mkdir -p /opt/lib/perl/VEP/Plugins
