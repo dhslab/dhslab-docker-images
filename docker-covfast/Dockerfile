@@ -14,6 +14,9 @@ WORKDIR /tmp/
 # - libssl-dev: required for libcrypto dependency
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    ca-certificates \
+    make \
+    git \
     build-essential \
     wget \
     zlib1g-dev \
