@@ -58,8 +58,8 @@ sub new {
 # Defines the new fields to be added to the VEP output header
 sub get_header_info {
     return {
-        'T_START' => 'Start coordinate of the transcript',
-        'T_END'   => 'End coordinate of the transcript',
+        'START' => 'Start coordinate of the transcript',
+        'END'   => 'End coordinate of the transcript',
     };
 }
 
@@ -85,8 +85,8 @@ sub run {
     # Return the start and end coordinates if a transcript is present
     if ($transcript) {
         return {
-            'T_START' => $transcript->start,
-            'T_END'   => $transcript->end,
+            'START' => $transcript->start,
+            'END'   => $transcript->end,
         };
     }
 
