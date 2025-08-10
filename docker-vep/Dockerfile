@@ -1,11 +1,11 @@
-FROM ensemblorg/ensembl-vep:release_114.0
+FROM ensemblorg/ensembl-vep:release_113.0
 
-LABEL vep114 and htslib1.21 image
+LABEL vep113 and htslib1.21 image
 
 USER root
 RUN mkdir -p /opt/lib/perl/VEP/Plugins
 COPY Downstream.pm /opt/lib/perl/VEP/Plugins/Downstream.pm
-
+COPY TranscriptCoordinates.pm /opt/lib/perl/VEP/Plugins/TranscriptCoordinates.pm
 RUN apt-get update && apt-get install -y wget libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
 
 ##############
