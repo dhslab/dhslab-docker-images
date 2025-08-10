@@ -1,6 +1,6 @@
 FROM ensemblorg/ensembl-vep:release_113.0
 
-LABEL vep113 and htslib1.21 image
+LABEL VEP Release 113 with custom plugin for transcript coordinates built with htslib, samtools and bcftools version 1.21 
 
 USER root
 RUN mkdir -p /opt/lib/perl/VEP/Plugins
