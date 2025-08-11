@@ -1,15 +1,19 @@
+# Use a standard Ubuntu 20.04 base image
 FROM ubuntu:focal-20221130
 MAINTAINER David Spencer <dspencer@wustl.edu>
 
-LABEL CLE utilities
+LABEL cle_utilities="bioinformatics tools"
 
+# Set non-interactive frontend for package installations
 ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=America/Chicago
 
-#set timezone to CDT
-RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
-RUN echo "America/Chicago" > /etc/timezone
-
-RUN apt-get update -y && apt-get install -y --no-install-recommends \
+# Install basic dependencies and add the deadsnakes PPA for newer Python versions
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
     build-essential \
     bzip2 \
     curl \
@@ -20,9 +24,9 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     libpng-dev \
     libssl-dev \
     libxml2-dev \
+    libnss-sss \
     make \
     ncurses-dev \
-    nodejs \
     pkg-config \
     unzip \
     zip \
@@ -30,79 +34,80 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     libbz2-dev \
     liblzma-dev \
     bc \
-    curl \
     python3.11 \
+    python3.11-dev \
+    python3.11-distutils \
     python3-pip \
-    python3-dev \
-    tzdata \
     gawk \
     openssh-client \
-    grep \
-    evince \
-    libnss-sss \
     bedtools && \
-    apt-get clean all
+    # Clean up apt cache to reduce image size
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN dpkg-reconfigure --frontend noninteractive tzdata
+# Update alternatives to make python3.11 the default python3
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
+    update-alternatives --set python3 /usr/bin/python3.11
 
-# Install Python3 packages available through pip 
-RUN pip install numpy && \
-    pip install cython && \
-    pip install cyvcf2 && \
-    pip install pandas && \
-    pip install pysam && \
-    pip install pyranges && \
-    pip install scipy && \
-    pip install openpyxl && \
-    pip install biopython
+# Ensure pip is up-to-date
+RUN python3 -m pip install --upgrade pip
 
-RUN ln -s $(which python3) /usr/local/bin/python
+############################################################
+# BUILD HTSLIB, SAMTOOLS, AND BCFTOOLS FROM SOURCE (v1.21)
+############################################################
 
-##############
-#HTSlib 1.18#
-##############
 ENV HTSLIB_INSTALL_DIR=/opt/htslib
-
-WORKDIR /tmp
-RUN wget https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.tar.bz2 && \
-    tar --bzip2 -xvf htslib-1.18.tar.bz2 && \
-    cd /tmp/htslib-1.18 && \
-    ./configure  --enable-plugins --prefix=$HTSLIB_INSTALL_DIR && \
-    make && \
-    make install && \
-    cp $HTSLIB_INSTALL_DIR/lib/libhts.so* /usr/lib/ && \
-    cp $HTSLIB_INSTALL_DIR/bin/tabix /usr/local/bin/tabix && \
-    cp $HTSLIB_INSTALL_DIR/bin/bgzip /usr/local/bin/bgzip && \
-    rm -rf /tmp/htslib-1.18
-
-
-################
-#Samtools 1.18#
-################
 ENV SAMTOOLS_INSTALL_DIR=/opt/samtools
+ENV BCFTOOLS_INSTALL_DIR=/opt/bcftools
+ENV HTS_VERSION=1.21
 
+# HTSlib ${HTS_VERSION}
 WORKDIR /tmp
-RUN wget https://github.com/samtools/samtools/releases/download/1.18/samtools-1.18.tar.bz2 && \
-    tar --bzip2 -xf samtools-1.18.tar.bz2 && \
-    cd /tmp/samtools-1.18 && \
-    ./configure --with-htslib=$HTSLIB_INSTALL_DIR --prefix=$SAMTOOLS_INSTALL_DIR && \
+RUN wget https://github.com/samtools/htslib/releases/download/${HTS_VERSION}/htslib-${HTS_VERSION}.tar.bz2 && \
+    tar -xjf htslib-${HTS_VERSION}.tar.bz2 && \
+    cd htslib-${HTS_VERSION} && \
+    ./configure --prefix=$HTSLIB_INSTALL_DIR && \
     make && \
     make install && \
-    ln -s /opt/samtools/bin/* /usr/local/bin/ && \
-    cd / && \
-    rm -rf /tmp/samtools-1.18
+    rm -rf /tmp/htslib-${HTS_VERSION}*
 
+# Samtools ${HTS_VERSION}
+RUN wget https://github.com/samtools/samtools/releases/download/${HTS_VERSION}/samtools-${HTS_VERSION}.tar.bz2 && \
+    tar -xjf samtools-${HTS_VERSION}.tar.bz2 && \
+    cd samtools-${HTS_VERSION} && \
+    ./configure --prefix=$SAMTOOLS_INSTALL_DIR --with-htslib=$HTSLIB_INSTALL_DIR && \
+    make && \
+    make install && \
+    rm -rf /tmp/samtools-${HTS_VERSION}*
 
-################
-#bcftools 1.18#
-################
-ENV BCFTOOLS_INSTALL_DIR=/opt/bcftools
-WORKDIR /tmp
-RUN wget https://github.com/samtools/bcftools/releases/download/1.18/bcftools-1.18.tar.bz2 && \
-    tar --bzip2 -xf bcftools-1.18.tar.bz2 && \
-    cd /tmp/bcftools-1.18 && \
-    make prefix=$BCFTOOLS_INSTALL_DIR && \
-    make prefix=$BCFTOOLS_INSTALL_DIR install && \
-    ln -s /opt/bcftools/bin/* /usr/local/bin/ && \
-    cd / && \
-    rm -rf /tmp/bcftools-1.18
+# bcftools ${HTS_VERSION}
+RUN wget https://github.com/samtools/bcftools/releases/download/${HTS_VERSION}/bcftools-${HTS_VERSION}.tar.bz2 && \
+    tar -xjf bcftools-${HTS_VERSION}.tar.bz2 && \
+    cd bcftools-${HTS_VERSION} && \
+    ./configure --prefix=$BCFTOOLS_INSTALL_DIR --with-htslib=$HTSLIB_INSTALL_DIR && \
+    make && \
+    make install && \
+    rm -rf /tmp/bcftools-${HTS_VERSION}*
+
+# Add the new tools to the system PATH and library path
+ENV PATH=$HTSLIB_INSTALL_DIR/bin:$SAMTOOLS_INSTALL_DIR/bin:$BCFTOOLS_INSTALL_DIR/bin:$PATH
+ENV LD_LIBRARY_PATH=$HTSLIB_INSTALL_DIR/lib:$LD_LIBRARY_PATH
+
+############################################################
+# INSTALL PYTHON PACKAGES
+############################################################
+
+RUN python3 -m pip install --no-cache-dir \
+    numpy \
+    cython \
+    pandas \
+    pysam \
+    cyvcf2 \
+    pyranges \
+    scipy \
+    openpyxl \
+    biopython \
+    natsort
+
+# Set a default working directory for when the container starts
+WORKDIR /data
