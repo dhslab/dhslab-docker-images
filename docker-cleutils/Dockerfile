@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:focal-20221130
 MAINTAINER David Spencer <dspencer@wustl.edu>
 
 LABEL CLE utilities
@@ -31,7 +31,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     liblzma-dev \
     bc \
     curl \
-    python3.10 \
+    python3.11 \
     python3-pip \
     python3-dev \
     tzdata \
