@@ -64,5 +64,6 @@ RUN mamba install -y -c conda-forge -c bioconda \
     openpyxl \
     biopython && \
     # Clean up conda cache to save space
-    mamba clean -y --all
+    mamba clean -y --all && \
+    ln -s /opt/conda/bin/* /usr/local/bin/
 
