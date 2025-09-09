@@ -1,73 +1,92 @@
-name: push container to ghcr.io
+name: Build and Push Changed Containers
 
 on:
   push:
-    paths:
-      - '**/Dockerfile'
+    branches:
+      - main # Or your default branch
 
 jobs:
-  get-container-names:
-    runs-on: ubuntu-latest  # windows-latest | macos-latest
-    name: Get container name
-    outputs: 
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+  # This job discovers which service directories have changed.
+# This job discovers which service directories have changed.
+  determine-build-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.create-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
+          fetch-depth: 0
 
-      - name: Get changed files
+      - name: Get changed Dockerfiles
         id: changed-files
-        uses: tj-actions/changed-files@v23.1
+        uses: tj-actions/changed-files@v44
+        with:
+          # Only report changes to files named Dockerfile anywhere in the repo
+          files: '**/Dockerfile'
 
-      - name: Get container names
-        id: set-matrix
+      - name: Create build matrix for changed services
+        id: create-matrix
         run: |
-          JSON="{\"include\":["
+          # Get the list of changed Dockerfiles into a variable
+          changed_dockerfiles='${{ steps.changed-files.outputs.all_changed_files }}'
           
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do 
-            if [[ $file == *"Dockerfile"* ]]; then
-              name=${file%/Dockerfile}
-              name=${name#*/}
-              add_string="{\"container-name\": \"$name\"},"
-              if [[ "$JSON" != *"$add_string"* ]]; then
-                JSON="$JSON$add_string"
-              fi
-            fi
-          done
-          
-          if [[ $JSON == *, ]]; then
-            JSON="${JSON%?}"
+          # Check if the list of changed files is empty
+          if [[ -z "$changed_dockerfiles" ]]; then
+            # If it's empty, create an empty matrix and finish
+            matrix='{"include":[]}'
+          else
+            # If files were changed, get their directory paths and create the matrix
+            paths=$(echo "$changed_dockerfiles" | xargs -n1 dirname | sort -u)
+            matrix=$(echo "$paths" | jq -R '{"path": .}' | jq -cs '{"include": .}')
           fi
-          JSON="$JSON]}"
-          echo "::set-output name=matrix::$( echo "$JSON" )"
           
-  push-docker-image:
-    needs: get-container-names
+          echo "matrix=${matrix}" >> $GITHUB_OUTPUT
+          
+  # This job builds and pushes images based on the matrix from the previous job.
+  build-and-push:
+    needs: determine-build-matrix
+    # Only run this job if the matrix is not empty
+    if: ${{ needs.determine-build-matrix.outputs.matrix != '{"include":[]}' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: write # Required to push to GitHub Container Registry (ghcr.io)
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.get-container-names.outputs.matrix) }}
+      # Use the JSON output from the 'determine-build-matrix' job
+      matrix: ${{ fromJSON(needs.determine-build-matrix.outputs.matrix) }}
     steps:
-    - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v1
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Set date tag for the image
-      id: date
-      run: echo "DATE=$(date +'%y%m%d')" >> $GITHUB_ENV
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and Push Docker image
-      run: |
-        docker build ./${{ matrix.container-name }} --tag ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
-        docker tag ghcr.io/dhslab/${{ matrix.container-name }}:$DATE ghcr.io/dhslab/${{ matrix.container-name }}:latest
-        docker push ghcr.io/dhslab/${{ matrix.container-name }}:$DATE
-        docker push ghcr.io/dhslab/${{ matrix.container-name }}:latest
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # Creates an image name based on the directory path
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.path }}
+          tags: |
+            type=raw,value=latest,enable=true
+            type=raw,value={{date 'YYMMDD'}},enable=true
+
+      - name: 🚀 Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          # The context is the specific service directory from the matrix
+          context: ./${{ matrix.path }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

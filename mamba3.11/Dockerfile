@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 
 # Add labels for metadata
 LABEL maintainer="David Spencer <dspencer@wustl.edu>"
-LABEL description="Bioinformatics tools with Python 3.11 and Mambaforge"
+LABEL description="Base Ubuntu 22.04 Image"
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Chicago
@@ -16,8 +16,12 @@ RUN apt-get update -y && \
     curl \
     wget \
     gawk \
+    less \
     tzdata \
     openssh-client \
+    unzip \
+    zip \
+    bc \
     grep && \
     # Set timezone
     ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && \
@@ -27,7 +31,6 @@ RUN apt-get update -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# --- 2. Install Mambaforge and Create Conda Environment ---
 ENV CONDA_DIR /opt/conda
 WORKDIR /tmp
 RUN mkdir ${CONDA_DIR} && \
@@ -39,31 +42,9 @@ RUN /bin/bash /tmp/mamba.sh -f -b -p $CONDA_DIR && \
 # Add /opt/conda/bin to PATH
 ENV PATH=/opt/conda/bin:$PATH
 
-# htslib version
-ARG HTSLIB_VERSION=1.21
-
-# python version
 ARG PYTHON_VERSION=3.11
 
-# --- 3. Install All Software with a Single Mamba Command ---
 RUN mamba install -y -c conda-forge -c bioconda \
-    "python=${PYTHON_VERSION}" \
-    # Command-line tools
-    "htslib=${HTSLIB_VERSION}" \
-    "samtools=${HTSLIB_VERSION}" \
-    "bcftools=${HTSLIB_VERSION}" \
-    bedtools \
-    # Python libraries
-    numpy \
-    cython \
-    pandas \
-    pysam \
-    cyvcf2 \
-    pyranges \
-    scipy \
-    openpyxl \
-    biopython && \
+    "python=${PYTHON_VERSION}" && \
     # Clean up conda cache to save space
-    mamba clean -y --all && \
-    ln -s /opt/conda/bin/* /usr/local/bin/
-
+    mamba clean -y --all

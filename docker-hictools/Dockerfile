@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:focal-20221130
 
 LABEL Image for micro-c/hi-c tools
 
@@ -37,20 +37,13 @@ RUN dpkg-reconfigure --frontend noninteractive tzdata
 ## Conda installation
 # Configure environment
 ENV CONDA_DIR /opt/conda
-ENV PATH $CONDA_DIR/bin:$PATH
+RUN cd /tmp && mkdir -p $CONDA_DIR && \
+    wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
+    bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
+    rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh && \
+    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda python=3.11 htslib==1.21 samtools==1.21 bedtools pysam tabulate numpy scipy py2bit matplotlib pandas h5py pyBigWig pairtools cooler cooltools hic2cool && \
+    $CONDA_DIR/bin/conda clean -y --all && \
+    ln -s /opt/conda/bin/* /usr/local/bin/
+    
 
-# Install pythong/conda
-RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py37_23.1.0-1-Linux-x86_64.sh && \
-    bash Miniconda3-py37_23.1.0-1-Linux-x86_64.sh -p $CONDA_DIR -u -b && \
-    rm Miniconda3-py37_23.1.0-1-Linux-x86_64.sh && \
-    conda clean -y --all && \
-    conda install -c bioconda samtools ucsc-bedgraphtobigwig && \ 
-    pip install pysam tabulate numpy scipy py2bit matplotlib pandas h5py pyBigWig pairtools cooler fanc && \
-    pip install cooltools && \   
-    pip install clodius && \
-    ln -s ${CONDA_DIR}/bin/* /usr/local/bin/
-
-RUN git clone https://github.com/billgreenwald/pgltools.git && mv pgltools /usr/local/ && \
-    ln -s /usr/local/pgltools/sh/pgltools /usr/local/bin/pgltools && \
-    sed -i -e 's!$script_path!/usr/local/pgltools/sh!g' /usr/local/pgltools/sh/pgltools
 
