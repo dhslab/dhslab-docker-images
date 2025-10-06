@@ -9,7 +9,7 @@ jobs:
   # This job discovers which service directories have changed.
 # This job discovers which service directories have changed.
   determine-build-matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     outputs:
       matrix: ${{ steps.create-matrix.outputs.matrix }}
     steps:
@@ -59,18 +59,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      # Free up disk space to avoid issues with large Docker builds
-      - name: 🧹 Free up disk space on the runner
-        run: |
-          echo "Initial disk space:"
-          df -h
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          echo "Disk space after cleanup:"
-          df -h
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
