@@ -9,7 +9,7 @@ jobs:
   # This job discovers which service directories have changed.
 # This job discovers which service directories have changed.
   determine-build-matrix:
-    runs-on: ubuntu-latest-8-cores
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.create-matrix.outputs.matrix }}
     steps:
