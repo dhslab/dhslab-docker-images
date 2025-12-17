@@ -11,6 +11,9 @@ dependencies:
   # Quarto CLI
   - quarto>=1.4
 
+  # System Utilities
+  - procps-ng  # Provides 'ps' for Nextflow metrics
+
   # R Packages (Minimal set)
   - r-jsonlite
   - r-dplyr
@@ -24,4 +27,3 @@ dependencies:
   - matplotlib
   - ipykernel
   - jupyter_client
-
