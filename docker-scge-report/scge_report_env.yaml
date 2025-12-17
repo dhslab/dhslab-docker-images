@@ -1,0 +1,27 @@
+name: scge-report
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  # Core R & Python
+  - python=3.11
+  - r-base=4.3.3
+  
+  # Quarto CLI
+  - quarto>=1.4
+
+  # R Packages (Minimal set)
+  - r-jsonlite
+  - r-dplyr
+  - r-tidyr
+  - r-knitr
+  - r-rmarkdown
+  - r-reticulate
+  
+  # Python Packages
+  - pandas
+  - matplotlib
+  - ipykernel
+  - jupyter_client
+
