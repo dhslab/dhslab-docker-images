@@ -19,10 +19,14 @@ ENV LC_ALL=en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV TERM=xterm
 
-    ## Add a default CRAN mirror
+# Add a default CRAN mirror and install packages
 RUN Rscript -e 'install.packages(c("tidyverse","ggplot2","reshape2","cowplot","dplyr","tidyr","qpdf","jsonlite","optparse"))'
 
 # Install bioconductor packages
 RUN Rscript -e 'if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")' && \
     Rscript -e 'BiocManager::install(c("BiocGenerics","IRanges","S4Vectors","GenomicRanges","XVector","rtracklayer"), ask=FALSE)'
 
+# OVERRIDE DEFAULT R CONSOLE BEHAVIOR
+# rocker images default to CMD ["R"]. 
+# Changing this to bash allows you to use the container as a generic environment.
+CMD ["/bin/bash"]
