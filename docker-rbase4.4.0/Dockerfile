@@ -20,7 +20,7 @@ ENV LANG=en_US.UTF-8
 ENV TERM=xterm
 
     ## Add a default CRAN mirror
-RUN Rscript -e 'install.packages(c("tidyverse","ggplot2","reshape2","cowplot","dplyr","tidyr","qpdf","jsonlite"))'
+RUN Rscript -e 'install.packages(c("tidyverse","ggplot2","reshape2","cowplot","dplyr","tidyr","qpdf","jsonlite","optparse"))'
 
 # Install bioconductor packages
 RUN Rscript -e 'if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")' && \
