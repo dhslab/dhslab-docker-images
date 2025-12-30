@@ -1,7 +1,4 @@
-FROM ubuntu:20.04
-MAINTAINER "Dave Spencer" <dhspence@gmail.com>
-
-LABEL description="long read"
+FROM ubuntu:focal-20221130
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -77,21 +74,21 @@ RUN apt-get update -y && apt-get install -y \
 
 
 ##############
-#HTSlib 1.13#
+#HTSlib 1.21#
 ##############
 ENV HTSLIB_INSTALL_DIR=/opt/htslib
 
 WORKDIR /tmp
-RUN wget https://github.com/samtools/htslib/releases/download/1.13/htslib-1.13.tar.bz2 && \
-    tar --bzip2 -xvf htslib-1.13.tar.bz2 && \
-    cd /tmp/htslib-1.13 && \
+RUN wget https://github.com/samtools/htslib/releases/download/1.21/htslib-1.21.tar.bz2 && \
+    tar --bzip2 -xvf htslib-1.21.tar.bz2 && \
+    cd /tmp/htslib-1.21 && \
     ./configure  --enable-plugins --prefix=$HTSLIB_INSTALL_DIR && \
     make && \
     make install && \
     cp $HTSLIB_INSTALL_DIR/lib/libhts.so* /usr/lib/ && \
     ln -s $HTSLIB_INSTALL_DIR/bin/tabix /usr/bin/tabix && \
     ln -s $HTSLIB_INSTALL_DIR/bin/bgzip /usr/bin/bgzip && \
-    rm -Rf /tmp/htslib-1.13
+    rm -Rf /tmp/htslib-1.21
 
 ################
 #Samtools 1.13#
@@ -99,15 +96,15 @@ RUN wget https://github.com/samtools/htslib/releases/download/1.13/htslib-1.13.t
 ENV SAMTOOLS_INSTALL_DIR=/opt/samtools
 
 WORKDIR /tmp
-RUN wget https://github.com/samtools/samtools/releases/download/1.13/samtools-1.13.tar.bz2 && \
-    tar --bzip2 -xf samtools-1.13.tar.bz2 && \
-    cd /tmp/samtools-1.13 && \
+RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2 && \
+    tar --bzip2 -xf samtools-1.21.tar.bz2 && \
+    cd /tmp/samtools-1.21 && \
     ./configure --with-htslib=$HTSLIB_INSTALL_DIR --prefix=$SAMTOOLS_INSTALL_DIR && \
     make && \
     make install && \
     ln -s /opt/samtools/bin/* /usr/local/bin/ && \
     cd / && \
-    rm -rf /tmp/samtools-1.13
+    rm -rf /tmp/samtools-1.21
 
 # minimap2
 
@@ -128,7 +125,7 @@ RUN git clone https://github.com/lh3/gfatools && \
 
 WORKDIR /tmp
 
-RUN wget https://github.com/vgteam/vg/releases/download/v1.43.0/vg && \
+RUN wget https://github.com/vgteam/vg/releases/download/v1.70.0/vg && \
     chmod a+x vg && mv vg /usr/local/bin/
 
 # minigraph
@@ -137,15 +134,4 @@ WORKDIR /tmp
 
 RUN git clone https://github.com/lh3/minigraph && \
     cd minigraph && make && mv minigraph /usr/local/bin
-
-ENV CONDA_DIR /opt/conda
-
-RUN wget -O Mambaforge.sh  "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh" && \
-    bash Mambaforge.sh -b -p "/opt/conda"
-
-ENV PATH=$CONDA_DIR/bin:$PATH
-
-RUN conda init bash
-
-RUN mamba create -n modbam2bed -c bioconda -c conda-forge -c epi2melabs modbam2bed && mamba clean --all
 
