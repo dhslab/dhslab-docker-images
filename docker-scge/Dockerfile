@@ -49,7 +49,7 @@ RUN cd /tmp && mkdir -p $CONDA_DIR && \
     wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
     bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
     rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh && \
-    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda python=3.11 numpy joblib scikit-learn bcftools==1.21 htslib==1.21 samtools==1.21 pandas openpyxl scipy cython pysam statsmodels pyranges biotite pyodbc ncls && \
+    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda python=3.11 numpy joblib scikit-learn bcftools==1.21 htslib==1.21 samtools==1.21 pandas openpyxl scipy cython pysam statsmodels pyranges biotite pyodbc ncls edlib && \
     $CONDA_DIR/bin/conda clean -y --all && \
     ln -s /opt/conda/bin/* /usr/local/bin/
 
