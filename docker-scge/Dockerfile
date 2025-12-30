@@ -20,7 +20,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     libxml2-dev \
     make \
     ncurses-dev \
-    nodejs \
     pkg-config \
     unzip \
     wget \
