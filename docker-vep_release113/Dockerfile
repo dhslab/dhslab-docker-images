@@ -6,6 +6,7 @@ USER root
 RUN mkdir -p /opt/lib/perl/VEP/Plugins
 COPY Downstream.pm /opt/lib/perl/VEP/Plugins/Downstream.pm
 COPY TranscriptCoordinates.pm /opt/lib/perl/VEP/Plugins/TranscriptCoordinates.pm
+COPY CodingFrame.pm /opt/lib/perl/VEP/Plugins/CodingFrame.pm
 RUN apt-get update && apt-get install -y wget libncurses5-dev libncursesw5-dev libcurl4-openssl-dev
 
 ##############
