@@ -28,21 +28,21 @@ SOFTWARE.
 
 =head1 NAME
 
- CodingFrame
+ IntronFrame
 
 =head1 SYNOPSIS
 
- mv CodingFrame.pm ~/.vep/Plugins
- ./vep -i variations.vcf --plugin CodingFrame
+ mv IntronFrame.pm ~/.vep/Plugins
+ ./vep -i variations.vcf --plugin IntronFrame
 
 =head1 DESCRIPTION
 
- A VEP plugin that gets the frame of the nearby exons of the transcript relative
+ A VEP plugin that gets the coding frame of introns relative
  to a variant position and the transcript strand.
 
 =cut
 
-package CodingFrame;
+package IntronFrame;
 
 use strict;
 use warnings;
@@ -66,7 +66,7 @@ sub variant_feature_types {
 
 sub get_header_info {
     return {
-        CodingFrame => "Phase of upstream and downstream splice junctions relative to variant position(s)",
+        IntronFrame => "Phase of upstream and downstream splice junctions relative to variant position(s)",
     };
 }
 
@@ -89,53 +89,66 @@ sub run {
 
     return {} unless $vf;
 
-    my @positions;
     if ($is_sv) {
-        # Check for DEL/DUP
         my $type = '';
         if ($vf->can('class_SO_term')) {
             $type = $vf->class_SO_term;
         }
         
         if ($type =~ /deletion/i || $type =~ /duplication/i || $type =~ /copy_number/i) {
-             @positions = ($vf->start, $vf->end);
-        } else {
-             # BND, INS, etc.
-             @positions = ($vf->start);
+
+            # If variant start < transcript start and variant end > transcript end
+            if ($vf->start < $tr->start && $vf->end > $tr->end) {
+                return {};
+            }
+
+            my ($start_phase, $start_feature) = $self->_get_feature_info($tr, $vf->start);
+            my ($end_phase, $end_feature) = $self->_get_feature_info($tr, $vf->end);
+
+            # If start and end are in the same feature (and feature is found) dont return phase info
+            if (defined($start_feature) && defined($end_feature) && $start_feature eq $end_feature) {
+                return {};
+            }
+
+            # Otherwise, report both if they are different. This means the breakpoints are in an exon.
+            my @results;
+            push @results, $start_phase if $start_phase ne '';
+            push @results, $end_phase if $end_phase ne '';
+            
+            my %seen;
+            my @unique_results = grep { !$seen{$_}++ } @results;
+
+            return { IntronFrame => join('&', @unique_results) } if @unique_results;
+            return {};
         }
-    } else {
-        # Small variant
-        @positions = ($vf->start);
     }
+
+    # Fallback for small variants and other SVs (BND, INS)
+    my @positions = ($vf->start);
 
     my @results;
-    my $found_any = 0;
     foreach my $pos (@positions) {
         my $res = $self->get_phase($tr, $pos);
-        push @results, $res;
-        $found_any = 1 if $res ne '';
+        push @results, $res if $res ne '';
     }
     
-    return {} unless $found_any;
+    return {} unless @results;
 
-    return { CodingFrame => join('&', @results) };
+    return { IntronFrame => join('&', @results) };
 }
 
 sub get_phase {
+    my ($self, $tr, $pos) = @_;
+    my ($phase, undef) = $self->_get_feature_info($tr, $pos);
+    return $phase;
+}
+
+sub _get_feature_info {
     my ($self, $tr, $pos) = @_;
 
     # Get exons in 5' to 3' order (transcription order)
     my @exons = @{$tr->get_all_Exons};
     my $strand = $tr->strand;
-
-    # Check if pos is in an exon
-    foreach my $exon (@exons) {
-        if ($pos >= $exon->start && $pos <= $exon->end) {
-             my $up   = defined($exon->phase) ? $exon->phase : -1;
-             my $down = defined($exon->end_phase) ? $exon->end_phase : -1;
-             return "$up/$down";
-        }
-    }
 
     # Check if pos is in an intron
     for my $i (0 .. $#exons - 1) {
@@ -154,11 +167,11 @@ sub get_phase {
              # We want e1 downstream phase, e2 upstream phase.
              my $up   = defined($e1->end_phase) ? $e1->end_phase : -1;
              my $down = defined($e2->phase) ? $e2->phase : -1;
-             return "$up/$down";
+             return ("$up", "intron$i");
         }
     }
 
-    return "";
+    return ("", undef);
 }
 
 1;
