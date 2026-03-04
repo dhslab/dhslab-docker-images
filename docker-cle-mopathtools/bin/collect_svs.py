@@ -268,9 +268,8 @@ def main():
     parser = argparse.ArgumentParser(description="Collect Structural Variants from ChromoSeq output.")
     parser.add_argument("--sv_vcf", required=True, type=checkfile, help="Annotated SV VCF file (*.sv_annotated.vcf.gz)")
     parser.add_argument("--sv_targets", required=True, type=checkfile, help="Recurrent SV target list CSV")
-    parser.add_argument("--cov_report", required=True, type=checkfile, help="Coverage report TSV (*.coverage_report.tsv)")
+    parser.add_argument("--bedfile", required=True, type=checkfile, help="Mopath formatted bedfile or coverage report")
     parser.add_argument("--outfile", type=str, help="Output tab-delimited file. If not provided, output is written to stdout.")
-    parser.add_argument("--reference", help="Reference fasta (required for CRAM, optional for VCF)")
     parser.add_argument("--version", "-v", action="version", version="%(prog)s: " + __version__)
     args = parser.parse_args()
 
@@ -300,11 +299,11 @@ def main():
     recurrentSvs = recurrentSvs.where(pd.notna(recurrentSvs), None)
 
     # Load coverage report to get gene/transcript info
-    with open(args.cov_report, "r") as f:
+    with open(args.bedfile, "r") as f:
         lines = f.readlines()
     header_line = lines[0].replace("#", "").strip()
     covDf = pd.read_csv(
-        args.cov_report,
+        args.bedfile,
         header=None,
         skiprows=1,
         names=["Chromosome", "Start", "End", "Gene", "Info"] + header_line.split("\t")[5:],
@@ -328,7 +327,7 @@ def main():
     geneTrx = (
         geneTrx[["Gene", "Transcript", "cdsStart", "cdsEnd", "strand"]]
                 .drop_duplicates()
-                .reset_index()
+                .reset_index(drop=True)
         )
 
     ids = (
