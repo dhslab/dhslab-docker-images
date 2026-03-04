@@ -41,5 +41,6 @@ RUN python -m pip install --no-cache-dir \
     pysam \
     natsort
 
-RUN cp bin/*.py /usr/local/bin/ & chmod +x /usr/local/bin/*.py
+COPY bin/*.py /usr/local/bin/ 
+RUN chmod +x /usr/local/bin/*.py
 
