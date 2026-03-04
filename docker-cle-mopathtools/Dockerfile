@@ -10,6 +10,7 @@ ENV TZ=America/Chicago
 # System tools and bioinformatics command-line packages.
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
+    procps \
     bzip2 \
     ca-certificates \
     curl \
