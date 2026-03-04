@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
 import argparse
+import json
 import os
+import re
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -71,8 +74,7 @@ def vep_csq_to_dataframe(csq_tag: str | tuple | None, header_description: str) -
     
     # If a SYMBOL is missing, use the Gene ID instead
     if "SYMBOL" in df.columns and "Gene" in df.columns:
-        missing_symbol = df["SYMBOL"].isna() | (df["SYMBOL"] == "")
-        df.loc[missing_symbol, "SYMBOL"] = df.loc[missing_symbol, "Gene"]
+        df["SYMBOL"] = df.apply(lambda row: row['Gene'] if pd.isna(row['SYMBOL']) or row['SYMBOL'] == '' else row['SYMBOL'], axis=1)
     
     # Standardize STRAND representation
     if "STRAND" in df.columns:
@@ -184,7 +186,7 @@ def known_sv_genes_tag_to_dataframe(variant, header_description: str) -> pd.Data
 
     return df
 
-def vep_gene_effect(row):
+def vepGeneEffect(row):
     # if row is all None, return None
     if row.isna().all():
         return None
@@ -262,191 +264,18 @@ def get_gene_syntax(row, bnd_orientation, chr_l, chr_r):
 
     return genestring, genedetail
 
-def load_recurrent_svs(path: str) -> pd.DataFrame:
-    recurrent_svs = pd.read_csv(path, sep=",", header=None)
-    swapped = recurrent_svs.copy()
-    swapped.iloc[:, [0, 1]] = swapped.iloc[:, [1, 0]].values
-    recurrent_svs = pd.concat([recurrent_svs, swapped], axis=0, ignore_index=True)
-    recurrent_svs.columns = ["KNOWNSVGENE1", "KNOWNSVGENE2", "KNOWNSVREQUIRESTRAND", "KNOWNSVTYPE"]
-    return recurrent_svs.where(pd.notna(recurrent_svs), None)
-
-def _extract_trx_info(cov_df: pd.DataFrame) -> pd.DataFrame:
-    ids = (
-        cov_df["Info"]
-        .str.split("|", expand=True)
-        .replace("\s\+\s\S+", "", regex=True)
-        .loc[:, 2:]
-    )
-    ids.columns = ["Transcript", "Region", "cdsStart", "cdsEnd", "strand"]
-    return pd.concat([cov_df, ids], axis=1)[["Gene", "Transcript", "cdsStart", "cdsEnd", "strand"]].drop_duplicates()
-
-def load_cov_gene_transcript_sets(path: str) -> tuple[pd.DataFrame, set[str], set[str], set[str]]:
-    with open(path, "r") as f:
-        header_line = f.readline().replace("#", "").strip()
-    cov_df = pd.read_csv(
-        path,
-        header=None,
-        skiprows=1,
-        names=["Chromosome", "Start", "End", "Gene", "Info"] + header_line.split("\t")[5:],
-        sep="\t",
-    )
-    gene_cov_df = cov_df[cov_df["Info"].str.contains("exon")]
-    sv_cov_df = cov_df[cov_df["Info"].str.contains(r"transcript|gene", regex=True)]
-
-    gene_trx = _extract_trx_info(gene_cov_df)
-    sv_trx = _extract_trx_info(sv_cov_df)
-    known_trx = pd.concat(
-        [sv_trx[["Gene", "Transcript"]], gene_trx[["Gene", "Transcript"]]],
-        axis=0,
-        ignore_index=True,
-    ).drop_duplicates()
-
-    known_gene_set = set(known_trx["Gene"].dropna().tolist())
-    known_trx_set = set(known_trx["Transcript"].dropna().tolist())
-    reportable_gene_set = set(gene_trx["Gene"].dropna().drop_duplicates().tolist())
-    return known_trx, known_gene_set, known_trx_set, reportable_gene_set
-
-def _base_filter(variant) -> str:
-    filter_keys = list(variant.filter.keys())
-    return "PASS" if not filter_keys else ";".join(filter_keys)
-
-def _clean_recurrent_filter(filter_value: str) -> str:
-    filter_list = [f for f in filter_value.split(";") if f not in ["MaxDepth", "MinSomaticScore"]]
-    return "PASS" if not filter_list else ";".join(filter_list)
-
-def _extract_support_reads(variant, zero_ref_for_dux: bool = False) -> tuple[tuple[int, int], tuple[int, int], float]:
-    pr = (0, 0)
-    sr = (0, 0)
-    if "SR" in variant.samples[0] and variant.samples[0]["SR"][0] is not None:
-        sr = variant.samples[0]["SR"]
-    if "PR" in variant.samples[0] and variant.samples[0]["PR"][0] is not None:
-        pr = variant.samples[0]["PR"]
-
-    if zero_ref_for_dux and "DUX" in variant.id:
-        sr = (0, sr[1])
-        pr = (0, pr[1])
-
-    total_reads = pr[0] + pr[1] + sr[0] + sr[1]
-    supporting_reads = sr[1] + pr[1]
-    abundance = round(supporting_reads / total_reads * 100, 1) if total_reads > 0 else 0.0
-    return pr, sr, abundance
-
-def _build_info_dict(pr: tuple[int, int], sr: tuple[int, int], contig) -> dict[str, str]:
-    return {
-        "PR_READS": f"{pr[1]}/{pr[0] + pr[1]}",
-        "SR_READS": f"{sr[1]}/{sr[0] + sr[1]}",
-        "CONTIG": str(contig),
-    }
-
-def _serialize_info_dict(info_dict: dict[str, str]) -> str:
-    return ";".join([f"{k}={v}" for k, v in info_dict.items()])
-
-def _get_bands(variant) -> list[str]:
-    if "Cytobands" in variant.info and variant.info.get("Cytobands") is not None:
-        return [b.replace("acen_", "") for b in variant.info.get("Cytobands")]
-    return []
-
-def _get_bandstring(bands: list[str], default: str = "None") -> str:
-    if not bands:
-        return default
-    if len(bands) == 1:
-        return bands[0]
-    return bands[0] + bands[-1]
-
-def _get_first_band(variant, default: str = "N/A") -> str:
-    bands = _get_bands(variant)
-    return bands[0] if bands else default
-
-def _merge_known_sv_genes(vep_df: pd.DataFrame, known_sv_df: pd.DataFrame) -> pd.DataFrame:
-    if known_sv_df.empty:
-        return vep_df
-    merged = pd.concat([vep_df, known_sv_df[~known_sv_df["SYMBOL"].isin(vep_df["SYMBOL"])]], ignore_index=True)
-    return merged.where(pd.notna(merged), None)
-
-def _annotate_known_flags(
-    vep_df: pd.DataFrame,
-    known_gene_set: set[str],
-    known_trx_set: set[str],
-    reportable_gene_set: set[str] | None = None,
-) -> pd.DataFrame:
-    if vep_df.empty:
-        return vep_df
-    vep_df["KnownGene"] = vep_df["SYMBOL"].isin(known_gene_set).astype(int)
-    if reportable_gene_set is not None:
-        vep_df.loc[vep_df["SYMBOL"].isin(reportable_gene_set), "KnownGene"] = 1
-    vep_df["KnownTrx"] = vep_df["Feature"].isin(known_trx_set).astype(int)
-    return vep_df
-
-def _build_breakend_vep(
-    variant,
-    csq_header_desc: str,
-    known_sv_genes_header_desc: str,
-    known_gene_set: set[str],
-    known_trx_set: set[str],
-) -> pd.DataFrame:
-    vep_df = vep_csq_to_dataframe(variant.info.get("CSQ"), csq_header_desc)
-    vep_df = vep_df[(vep_df["Allele"] == variant.ref) | (vep_df["Allele"] == "BND")].reset_index(drop=True)
-    if vep_df.empty:
-        return pd.DataFrame([{}], columns=vep_df.columns)
-
-    vep_df = _annotate_known_flags(vep_df, known_gene_set, known_trx_set)
-    if "IntronFrame" not in vep_df.columns:
-        vep_df["IntronFrame"] = None
-
-    known_sv_df = known_sv_genes_tag_to_dataframe(variant, known_sv_genes_header_desc)
-    known_sv_df["IntronFrame"] = 0
-    vep_df = _merge_known_sv_genes(vep_df, known_sv_df)
-    vep_df["GeneEffect"] = vep_df.apply(lambda r: vep_gene_effect(r), axis=1)
-    return vep_df
-
-def _build_deldup_syntax(vartype: str, chrom: str, pos1: int, pos2, bands: list[str]) -> tuple[str, str]:
-    csyntax = ""
-    psyntax = ""
-    if vartype == "DEL":
-        csyntax = chrom + ":g." + str(pos1) + "_" + str(pos2) + "del"
-        if (bands and bands[0].find("p") > -1 and bands[-1].find("q") > -1):
-            psyntax = "seq[GRCh38] -" + chrom.replace("chr", "")
-        elif (bands and any("q11" in b for b in bands) and any("qter" in b for b in bands) and chrom in ACROCENTRICS):
-            psyntax = "seq[GRCh38] -" + chrom.replace("chr", "")
-        elif (bands and bands[0].find("p") > -1):
-            psyntax = ("seq[GRCh38] del(" + chrom.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
-        elif bands:
-            psyntax = ("seq[GRCh38] del(" + chrom.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
-    elif vartype in ["DUP", "INS"]:
-        csyntax = chrom + ":g." + str(pos1) + "_" + str(pos2) + vartype.lower()
-        if (bands and bands[0].find("p") > -1 and bands[-1].find("q") > -1):
-            psyntax = "seq[GRCh38] +" + chrom.replace("chr", "")
-        elif (bands and any("q11" in b for b in bands) and any("qter" in b for b in bands) and chrom in ACROCENTRICS):
-            psyntax = "seq[GRCh38] +" + chrom.replace("chr", "")
-        elif (bands and bands[0].find("p") > -1):
-            psyntax = ("seq[GRCh38] " + vartype.lower() + "(" + chrom.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
-        elif bands:
-            psyntax = ("seq[GRCh38] " + vartype.lower() + "(" + chrom.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
-    return csyntax, psyntax
-
-def _normalize_exon_intron_columns(df: pd.DataFrame) -> pd.DataFrame:
-    def _tail_or_none(value):
-        if isinstance(value, str) and value:
-            return value.split("-")[-1]
-        return None
-
-    df["EXON_l"] = df["EXON_l"].apply(_tail_or_none)
-    df["INTRON_l"] = df["INTRON_l"].apply(_tail_or_none)
-    df["EXON_r"] = df["EXON_r"].apply(_tail_or_none)
-    df["INTRON_r"] = df["INTRON_r"].apply(_tail_or_none)
-    return df
-
 def main():
     parser = argparse.ArgumentParser(description="Collect Structural Variants from ChromoSeq output.")
     parser.add_argument("--sv_vcf", required=True, type=checkfile, help="Annotated SV VCF file (*.sv_annotated.vcf.gz)")
     parser.add_argument("--sv_targets", required=True, type=checkfile, help="Recurrent SV target list CSV")
     parser.add_argument("--cov_report", required=True, type=checkfile, help="Coverage report TSV (*.coverage_report.tsv)")
     parser.add_argument("--outfile", type=str, help="Output tab-delimited file. If not provided, output is written to stdout.")
+    parser.add_argument("--reference", help="Reference fasta (required for CRAM, optional for VCF)")
     parser.add_argument("--version", "-v", action="version", version="%(prog)s: " + __version__)
     args = parser.parse_args()
 
     # Load accessory files
-    nonsynonymous_consequences = {
+    nonSynon = {
         "splice_acceptor_variant",
         "splice_donor_variant",
         "stop_gained",
@@ -463,8 +292,63 @@ def main():
         "coding_sequence_variant",
     }
 
-    recurrent_svs = load_recurrent_svs(args.sv_targets)
-    known_trx, known_gene_set, known_trx_set, reportable_gene_set = load_cov_gene_transcript_sets(args.cov_report)
+    recurrentSvs = pd.read_csv(args.sv_targets, sep=",", header=None)
+    swapped = recurrentSvs.copy()
+    swapped.iloc[:, [0, 1]] = swapped.iloc[:, [1, 0]].values
+    recurrentSvs = pd.concat([recurrentSvs, swapped], axis=0, ignore_index=True)
+    recurrentSvs.columns = ["KNOWNSVGENE1", "KNOWNSVGENE2", "KNOWNSVREQUIRESTRAND", "KNOWNSVTYPE"]
+    recurrentSvs = recurrentSvs.where(pd.notna(recurrentSvs), None)
+
+    # Load coverage report to get gene/transcript info
+    with open(args.cov_report, "r") as f:
+        lines = f.readlines()
+    header_line = lines[0].replace("#", "").strip()
+    covDf = pd.read_csv(
+        args.cov_report,
+        header=None,
+        skiprows=1,
+        names=["Chromosome", "Start", "End", "Gene", "Info"] + header_line.split("\t")[5:],
+        sep="\t",
+    )
+    geneCovDf = covDf[covDf["Info"].str.contains("exon")]
+    svCovDf = covDf[covDf["Info"].str.contains(r"transcript|gene", regex=True)]
+
+    ids = (
+        geneCovDf["Info"]
+        .str.split("|", expand=True)
+        .replace("\s\+\s\S+", "", regex=True)
+        .loc[:, 2:]
+    )
+    ids.columns = ["Transcript", "Region", "cdsStart", "cdsEnd", "strand"]
+    geneTrx = (
+        pd.concat([geneCovDf, ids], axis=1)
+        .drop_duplicates()
+        .reset_index()
+    )
+    geneTrx = (
+        geneTrx[["Gene", "Transcript", "cdsStart", "cdsEnd", "strand"]]
+                .drop_duplicates()
+                .reset_index()
+        )
+
+    ids = (
+        svCovDf["Info"]
+        .str.split("|", expand=True)
+        .replace("\s\+\s\S+", "", regex=True)
+        .loc[:, 2:]
+    )
+    ids.columns = ["Transcript", "Region", "cdsStart", "cdsEnd", "strand"]
+    svTrx = pd.concat([svCovDf, ids], axis=1)[
+        ["Gene", "Transcript", "cdsStart", "cdsEnd", "strand"]
+    ].drop_duplicates()
+
+    knownTrx = pd.concat(
+        [svTrx[["Gene", "Transcript"]], geneTrx[["Gene", "Transcript"]]],
+        axis=0,
+        ignore_index=True,
+    ).drop_duplicates()
+
+    reportableCnvGeneList = geneTrx["Gene"].drop_duplicates().tolist()
 
     # Initialize dataframe for all SVs
     svs_df_columns = [
@@ -476,28 +360,27 @@ def main():
 
     # Process SVs
     print("Gathering SVs...", file=sys.stderr)
-    sv_vcf_handle = pysam.VariantFile(args.sv_vcf)
-    csq_header_desc = sv_vcf_handle.header.info['CSQ'].description
+    svvcf = pysam.VariantFile(args.sv_vcf)
+    csq_header_desc = svvcf.header.info['CSQ'].description
     known_sv_genes_header_desc = ""
-    if 'KnownSvGenes' in sv_vcf_handle.header.info:
-        known_sv_genes_header_desc = sv_vcf_handle.header.info['KnownSvGenes'].description
+    if 'KnownSvGenes' in svvcf.header.info:
+        known_sv_genes_header_desc = svvcf.header.info['KnownSvGenes'].description
 
-    pending_breakend_variants = {}
+    passedvars = {}
     sv_deldup_list = []
 
-    for variant in sv_vcf_handle:
+    for variant in svvcf:
         
         if variant.info["SVTYPE"] in ["BND", "INV"]:
-            pending_breakend_variants[variant.id] = variant
+            passedvars[variant.id] = variant
         
         else:
             # Hard filter DEL/DUPs that do not involve genes
             if "KnownSvGenes" not in variant.info and "CSQ" not in variant.info:
                 continue
 
-            filter = _base_filter(variant)
-
-            #caseid = variant.info.get("CASE")
+            filter_keys = list(variant.filter.keys())
+            filter = "PASS" if not filter_keys else ";".join(filter_keys)
 
             vartype = variant.info.get("SVTYPE")
             chr1 = str(variant.chrom)
@@ -510,8 +393,21 @@ def main():
             if pos2 == "N/A" and svlen != None:
                 pos2 = pos1 + svlen
             
-            pr, sr, abundance = _extract_support_reads(variant)
-            info_dict = _build_info_dict(pr, sr, variant.info.get("CONTIG"))
+            # Get abundance information
+            abundance = 0.0
+            PR = (0, 0)
+            SR = (0, 0)
+            if "SR" in variant.samples[0] and variant.samples[0]["SR"][0] is not None:
+                SR = variant.samples[0]["SR"]
+            if "PR" in variant.samples[0] and variant.samples[0]["PR"][0] is not None:
+                PR = variant.samples[0]["PR"]
+
+            denominator = PR[0] + PR[1] + SR[0] + SR[1]
+            abundance = round((SR[1] + PR[1]) / denominator * 100, 1) if denominator > 0 else 0.0
+
+            info_dict = { "PR_READS": f"{PR[1]}/{PR[0] + PR[1]}",
+                          "SR_READS": f"{SR[1]}/{SR[0] + SR[1]}",
+                          "CONTIG": str(variant.info.get("CONTIG")) }
 
             csyntax = ""
             psyntax = ""
@@ -520,78 +416,106 @@ def main():
             genedetail = "None"
             total_genes = "None"
 
-            bands = _get_bands(variant)
-            bandstring = _get_bandstring(bands)
+            bands = []
+            if "Cytobands" in variant.info and variant.info.get("Cytobands") is not None:
+                bands = variant.info.get("Cytobands")
+                bands = [b.replace("acen_", "") for b in bands]
+            
+            bandstring = bands[0] if bands else "None"
+            if len(bands) > 1:
+                bandstring = bands[0] + bands[-1]
 
-            vep_csq = vep_csq_to_dataframe(variant.info.get("CSQ"), csq_header_desc)
-            vep_csq = _annotate_known_flags(vep_csq, known_gene_set, known_trx_set, reportable_gene_set)
-            vep_csq = vep_csq.sort_values(
+            vepCsq = vep_csq_to_dataframe(variant.info.get("CSQ"), csq_header_desc)
+            vepCsq["KnownGene"] = vepCsq["SYMBOL"].isin(knownTrx["Gene"]).astype(int)
+            vepCsq.loc[vepCsq["SYMBOL"].isin(reportableCnvGeneList), "KnownGene"] = 1
+            vepCsq["KnownTrx"] = vepCsq["Feature"].isin(knownTrx["Transcript"]).astype(int)
+            vepCsq = vepCsq.sort_values(
                 by=["SYMBOL", "KnownTrx", "PICK"], ascending=[True, False, False]
             ).drop_duplicates(subset="SYMBOL", keep="first")
         
-            known_sv_gene_df = known_sv_genes_tag_to_dataframe(variant, known_sv_genes_header_desc)
-            vep_csq = _merge_known_sv_genes(vep_csq, known_sv_gene_df)
+            knownSvGeneDf = known_sv_genes_tag_to_dataframe(variant, known_sv_genes_header_desc)
+            if not knownSvGeneDf.empty:                
+                vepCsq = pd.concat([vepCsq, knownSvGeneDf[~knownSvGeneDf['SYMBOL'].isin(vepCsq['SYMBOL'])]], ignore_index=True)
+                vepCsq = vepCsq.where(pd.notna(vepCsq), None)
 
-            if not vep_csq.empty:
-                total_genes = f"{len(vep_csq['SYMBOL'].unique())} genes"
-                vep_csq = vep_csq.sort_values(by=["START"], ascending=[True])
-                vep_csq["GeneEffect"] = vep_csq.apply(lambda r: vep_gene_effect(r), axis=1)
-                vep_csq["GeneImpact"] = vep_csq["Consequence"].apply(
-                    lambda r: int(len(set(r.split("&")) & set(nonsynonymous_consequences)) > 0 if r else None)
+            if not vepCsq.empty:
+                total_genes = f"{len(vepCsq['SYMBOL'].unique())} genes"
+                vepCsq = vepCsq.sort_values(by=["START"], ascending=[True])
+                vepCsq["GeneEffect"] = vepCsq.apply(lambda r: vepGeneEffect(r), axis=1)
+                vepCsq["GeneImpact"] = vepCsq["Consequence"].apply(
+                    lambda r: int(len(set(r.split("&")) & set(nonSynon)) > 0 if r else None)
                 )
 
-            csyntax, psyntax = _build_deldup_syntax(vartype, chr1, pos1, pos2, bands)
+            # Format DEL/DUP events
+            if vartype == "DEL":
+                csyntax = chr1 + ":g." + str(pos1) + "_" + str(pos2) + "del"
+                if (bands and bands[0].find("p") > -1 and bands[-1].find("q") > -1):
+                    psyntax = "seq[GRCh38] -" + chr1.replace("chr", "")
+                elif (bands and any("q11" in b for b in bands) and any("qter" in b for b in bands) and chr1 in ACROCENTRICS):
+                    psyntax = "seq[GRCh38] -" + chr1.replace("chr", "")
+                elif (bands and bands[0].find("p") > -1):
+                    psyntax = ("seq[GRCh38] del(" + chr1.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
+                elif bands:
+                    psyntax = ("seq[GRCh38] del(" + chr1.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
+            elif vartype == "DUP" or vartype == "INS":
+                csyntax = chr1 + ":g." + str(pos1) + "_" + str(pos2) + vartype.lower()
+                if (bands and bands[0].find("p") > -1 and bands[-1].find("q") > -1):
+                    psyntax = "seq[GRCh38] +" + chr1.replace("chr", "")
+                elif (bands and any("q11" in b for b in bands) and any("qter" in b for b in bands) and chr1 in ACROCENTRICS):
+                    psyntax = "seq[GRCh38] +" + chr1.replace("chr", "")
+                elif (bands and bands[0].find("p") > -1):
+                    psyntax = ("seq[GRCh38] " + vartype.lower() + "(" + chr1.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
+                elif bands:
+                    psyntax = ("seq[GRCh38] " + vartype.lower() + "(" + chr1.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
 
-            known_gene_df = vep_csq[(vep_csq["KnownTrx"] == 1) & (vep_csq["DISTANCE"] == 0)].sort_values(by=["START"])[["SYMBOL", "GeneImpact", "GeneEffect"]]
+            knownGeneDf = vepCsq[(vepCsq["KnownTrx"] == 1) & (vepCsq["DISTANCE"] == 0)].sort_values(by=["START"])[["SYMBOL", "GeneImpact", "GeneEffect"]]
             
-            if len(known_gene_df) > 15:
-                genestring = f"{len(known_gene_df)} genes"
+            if len(knownGeneDf) > 15:
+                genestring = f"{len(knownGeneDf)} genes"
                 genedetail = genestring
-            elif len(known_gene_df) > 0:
-                genestring = ",".join(known_gene_df["SYMBOL"].unique().tolist())
+            elif len(knownGeneDf) > 0:
+                genestring = ",".join(knownGeneDf["SYMBOL"].unique().tolist())
                 genedetail = (
                     vartype.lower() + "[" + ",".join(
-                        known_gene_df.apply(
+                        knownGeneDf.apply(
                             lambda x: f"{x['SYMBOL']}({x['GeneEffect']})" if x['GeneEffect']!="intragenic" else f"{x['SYMBOL']}", axis=1
                         ).tolist()
                     ) + "]"
                 )
 
-            is_recurrent_sv = ((recurrent_svs["KNOWNSVGENE1"].isin(known_gene_df['SYMBOL']))
-                            & (recurrent_svs["KNOWNSVGENE2"].isin(known_gene_df['SYMBOL']))
-                            & (recurrent_svs["KNOWNSVREQUIRESTRAND"] == 1)
-                            & (recurrent_svs["KNOWNSVTYPE"].isin([vartype,"*"]))).any()
+            isRecurrentSv = ((recurrentSvs["KNOWNSVGENE1"].isin(knownGeneDf['SYMBOL']))
+                            & (recurrentSvs["KNOWNSVGENE2"].isin(knownGeneDf['SYMBOL']))
+                            & (recurrentSvs["KNOWNSVREQUIRESTRAND"] == 1)
+                            & (recurrentSvs["KNOWNSVTYPE"].isin([vartype,"*"]))).any()
             
-            if is_recurrent_sv:
-                filter = _clean_recurrent_filter(filter)
+            if isRecurrentSv:
+                filter_list = [f for f in filter.split(";") if f not in ["MaxDepth", "MinSomaticScore"]]
+                filter = "PASS" if not filter_list else ';'.join(filter_list)
 
             category = ""
-            if filter == "PASS" and is_recurrent_sv:
+            if filter == "PASS" and isRecurrentSv:
                 category = "CNV"
-            elif filter != "PASS" and is_recurrent_sv:
+            elif filter != "PASS" and isRecurrentSv:
                 category = "OTHERSV"
             elif filter == "PASS" and genestring != "None":
                 category = "OTHERSV"
             else:
                 category = None
 
-            #info_dict['CASEID'] = caseid
-
             # Add DEL/DUP info to list
             sv_deldup_list.append(dict(zip(svs_df_columns, [
                     category, vartype, chr1, int(pos1), chr1, int(pos2), svlen,
                     csyntax, psyntax, bandstring, genestring, genedetail, total_genes,
-                    filter, str(variant.id), abundance, _serialize_info_dict(info_dict),
+                    filter, str(variant.id), abundance, ';'.join([f"{k}={v}" for k, v in info_dict.items()]),
                 ])))
             
             # Get fusion genes formed by a deletion if the deletion juxtaposes 2 genes
-            if vartype == "DEL" and len(vep_csq[(vep_csq['START']<=pos1)]) > 1 and len(vep_csq[(vep_csq['END']>=pos2)]) > 1:
-                # Evaluate all left/right transcript pairings spanning the deleted interval.
-                candidate_fusions = pd.merge(vep_csq[(vep_csq['START']<=pos1)], 
-                                             vep_csq[(vep_csq['END']>=pos2)], how='cross', suffixes=('_l', '_r'))
+            if vartype == "DEL" and len(vepCsq[(vepCsq['START']<=pos1)]) > 1 and len(vepCsq[(vepCsq['END']>=pos2)]) > 1:
+                # get cross product of left and right candidate fusions (those that extend beyond the DEL interval)
+                candidate_fusions = pd.merge(vepCsq[(vepCsq['START']<=pos1)], 
+                                             vepCsq[(vepCsq['END']>=pos2)], how='cross', suffixes=('_l', '_r'))
 
                 is_inframe_splice = (
-                    (candidate_fusions['STRAND_l'] == candidate_fusions['STRAND_r']) &
                     (candidate_fusions['IntronFrame_l'] != -1) &
                     (candidate_fusions['IntronFrame_l'] == candidate_fusions['IntronFrame_r']) &
                     (candidate_fusions['INTRON_l'].notna()) & (candidate_fusions['INTRON_l'] != '') &
@@ -605,16 +529,18 @@ def main():
                                     .query("SYMBOL_l != 'INTERGENIC' and SYMBOL_r != 'INTERGENIC'")
                                     .reset_index(drop=True))
 
-                candidate_fusions = pd.merge(candidate_fusions,recurrent_svs,how='left', left_on=['SYMBOL_l','SYMBOL_r'], right_on=['KNOWNSVGENE1','KNOWNSVGENE2'])
-                is_recurrent = (candidate_fusions['KNOWNSVGENE1'].notna()) & \
-                               (candidate_fusions['KNOWNSVTYPE'].isna() | candidate_fusions['KNOWNSVTYPE'].isin([vartype, '*']))
-                candidate_fusions['RecurrentSV'] = np.where(is_recurrent, 1, 0)
+                candidate_fusions = pd.merge(candidate_fusions,recurrentSvs,how='left', left_on=['SYMBOL_l','SYMBOL_r'], right_on=['KNOWNSVGENE1','KNOWNSVGENE2'])
+                candidate_fusions['RecurrentSV'] = candidate_fusions.apply(lambda r: 1 if r['KNOWNSVGENE1'] is not None and (r['KNOWNSVTYPE'] is None or r['KNOWNSVTYPE'] == vartype) else 0, axis=1)
+
                 candidate_fusions = candidate_fusions[(candidate_fusions['RecurrentSV'] == 1) |
                                                         ((candidate_fusions['SYMBOL_l'] != candidate_fusions['SYMBOL_r']) & 
                                                         ((candidate_fusions['BIOTYPE_l']=='protein_coding') | (candidate_fusions['BIOTYPE_r']=='protein_coding')))]
 
                 if not candidate_fusions.empty:
-                    candidate_fusions = _normalize_exon_intron_columns(candidate_fusions)
+                    candidate_fusions['EXON_l'] = candidate_fusions.apply(lambda r: r['EXON_l'].split('-')[-1] if r['EXON_l'] else None,axis=1)
+                    candidate_fusions['INTRON_l'] = candidate_fusions.apply(lambda r: r['INTRON_l'].split('-')[-1] if r['INTRON_l'] else None,axis=1)
+                    candidate_fusions['EXON_r'] = candidate_fusions.apply(lambda r: r['EXON_r'].split('-')[-1] if r['EXON_r'] else None,axis=1)
+                    candidate_fusions['INTRON_r'] = candidate_fusions.apply(lambda r: r['INTRON_r'].split('-')[-1] if r['INTRON_r'] else None,axis=1)
                     candidate_fusions['SYMBOL_l'] = candidate_fusions['SYMBOL_l'].fillna('INTERGENIC')
                     candidate_fusions['SYMBOL_r'] = candidate_fusions['SYMBOL_r'].fillna('INTERGENIC')
 
@@ -637,22 +563,20 @@ def main():
                     if len(candidate_fusions) > 1:
                         info_dict['OTHERANNOTATIONS'] = '|'.join(candidate_fusions['genedetail'].tolist()[1:])
 
-                    #info_dict['CASEID'] = caseid
-
                     sv_deldup_list.append(dict(zip(svs_df_columns, [
                         category, vartype, chr1, int(pos1), chr1, int(pos2), svlen,
                         csyntax, psyntax, bandstring, candidate_fusions.iloc[0]['genestring'], candidate_fusions.iloc[0]['genedetail'], '2 genes',
-                        filter, str(variant.id), abundance, _serialize_info_dict(info_dict),
+                        filter, str(variant.id), abundance, ';'.join([f"{k}={v}" for k, v in info_dict.items()]),
                     ])))
 
     # Concatenate only if there are records to add
     if sv_deldup_list:
         svs = pd.concat([svs.dropna(axis=1, how='all'), pd.DataFrame(sv_deldup_list)], ignore_index=True)
 
-    # Pair breakends once by variant id and mate id.
-    processed_variant_ids = set()
+    # Handle BNDs
+    alreadydone = set()
     sv_bnd_list = []
-    for _variant_id, variant in pending_breakend_variants.items():
+    for v_id, variant in passedvars.items():
         
         mate_id_tuple = variant.info.get("MATEID")
         if not mate_id_tuple:
@@ -660,25 +584,24 @@ def main():
 
         mate_id = mate_id_tuple[0]
         
-        if variant.id in processed_variant_ids or mate_id in processed_variant_ids or mate_id not in pending_breakend_variants:
+        if variant.id in alreadydone or mate_id in alreadydone or mate_id not in passedvars:
             continue
         
-        mate = pending_breakend_variants[mate_id]
+        mate = passedvars[mate_id]
 
         if ("KnownSvGenes" not in variant.info and "KnownSvGenes" not in mate.info) and \
            ("CSQ" not in variant.info or "CSQ" not in mate.info):
             continue
 
-        # Normalize ordering so downstream logic can treat this as left/right consistently.
+        # swap variant and mate if variant is downstream of mate
         if variant.alts[0].find("[") == 0 or variant.alts[0].find("]") == 0:
             variant, mate = mate, variant
 
         bnd_orientation = -1 if variant.alts[0].find("[") == 0 or variant.alts[0].find("]") > 0 else 1
 
-        #caseid = variant.info.get("CASE")
-        
         vartype = variant.info.get("SVTYPE")
-        filter = _base_filter(variant)
+        filter_keys = list(variant.filter.keys())
+        filter = "PASS" if not filter_keys else ";".join(filter_keys)
 
         chr_l, pos_l = str(variant.chrom), variant.pos
         chr_r, pos_r = str(mate.chrom), mate.pos
@@ -688,10 +611,15 @@ def main():
         total_genes = "N/A"
         bandstring = "N/A"
 
-        bands_l = _get_first_band(variant, default="N/A")
-        bands_r = _get_first_band(mate, default="N/A")
+        bands_l = "N/A"
+        if "Cytobands" in variant.info and variant.info.get("Cytobands") is not None:
+            bands_l = variant.info.get("Cytobands")[0].replace("acen_", "")
 
-        # Build ISCN/cytogenetic syntax for BND/INV outputs.
+        bands_r = "N/A"
+        if "Cytobands" in mate.info and mate.info.get("Cytobands") is not None:
+            bands_r = mate.info.get("Cytobands")[0].replace("acen_", "")
+
+                # make ISCN syntax
         svtype = None
         chr_l_num_str = chr_l.replace('chr', '').replace('X', '-1').replace('Y', '-2').replace('M', '-3')
         chr_r_num_str = chr_r.replace('chr', '').replace('X', '-1').replace('Y', '-2').replace('M', '3')
@@ -714,26 +642,66 @@ def main():
                 psyntax = f"seq[GRCh38] {svtype}({chr_r.replace('chr', '')};{chr_l.replace('chr', '')})({bands_r};{bands_l})"
                 bandstring = f"{bands_r};{bands_l}"
 
-        pr, sr, abundance = _extract_support_reads(variant, zero_ref_for_dux=True)
-        info_dict = _build_info_dict(pr, sr, variant.info.get("CONTIG"))
+        # Calculate abundance from read counts
+        PR = (0, 0)
+        SR = (0, 0)
+        if "SR" in variant.samples[0] and variant.samples[0]["SR"][0] is not None:
+            SR = variant.samples[0]["SR"]
+        if "PR" in variant.samples[0] and variant.samples[0]["PR"][0] is not None:
+            PR = variant.samples[0]["PR"]
+        
+        if "DUX" in variant.id:
+            SR = (0, SR[1])
+            PR = (0, PR[1])
 
-        left_vep_csq = _build_breakend_vep(
-            variant,
-            csq_header_desc,
-            known_sv_genes_header_desc,
-            known_gene_set,
-            known_trx_set,
-        )
-        right_vep_csq = _build_breakend_vep(
-            mate,
-            csq_header_desc,
-            known_sv_genes_header_desc,
-            known_gene_set,
-            known_trx_set,
-        )
+        supporting_reads = SR[1] + PR[1]
+        total_reads = PR[0] + PR[1] + SR[0] + SR[1]
+        abundance = round(supporting_reads / total_reads * 100, 1) if total_reads > 0 else 0.0
 
-        # Cross left/right annotations to score all possible gene pairings.
-        bnd_annot = pd.merge(left_vep_csq, right_vep_csq, how='cross', suffixes=('_l', '_r'))
+        info_dict = { "PR_READS": f"{PR[1]}/{PR[0] + PR[1]}",
+                      "SR_READS": f"{SR[1]}/{SR[0] + SR[1]}",
+                      "CONTIG": str(variant.info.get("CONTIG")) }
+        
+        vepCsq1 = vep_csq_to_dataframe(variant.info.get("CSQ"), csq_header_desc)
+        vepCsq1 = vepCsq1[(vepCsq1['Allele']==variant.ref) | (vepCsq1['Allele']=="BND")].reset_index(drop=True)
+        if not vepCsq1.empty:
+            vepCsq1["KnownTrx"] = vepCsq1["Feature"].isin(knownTrx["Transcript"]).astype(int)
+            vepCsq1["KnownGene"] = vepCsq1["SYMBOL"].isin(knownTrx["Gene"]).astype(int)
+
+            if "IntronFrame" not in vepCsq1.columns:
+                vepCsq1["IntronFrame"] = None
+                    
+            knownSvGene1Df = known_sv_genes_tag_to_dataframe(variant, known_sv_genes_header_desc)
+            knownSvGene1Df['IntronFrame'] = 0
+            vepCsq1 = pd.concat([vepCsq1, knownSvGene1Df[~knownSvGene1Df['SYMBOL'].isin(vepCsq1['SYMBOL'])]], ignore_index=True)
+            vepCsq1 = vepCsq1.where(pd.notna(vepCsq1), None)
+
+            vepCsq1["GeneEffect"] = vepCsq1.apply(lambda r: vepGeneEffect(r), axis=1)
+
+        else:
+            vepCsq1 = pd.DataFrame([{}], columns=vepCsq1.columns)
+
+        vepCsq2 = vep_csq_to_dataframe(mate.info.get("CSQ"), csq_header_desc)
+        vepCsq2 = vepCsq2[(vepCsq2['Allele']==mate.ref) | (vepCsq2['Allele']=="BND")].reset_index(drop=True)
+        if not vepCsq2.empty:
+            vepCsq2["KnownTrx"] = vepCsq2["Feature"].isin(knownTrx["Transcript"]).astype(int)
+            vepCsq2["KnownGene"] = vepCsq2["SYMBOL"].isin(knownTrx["Gene"]).astype(int)
+
+            if "IntronFrame" not in vepCsq2.columns:
+                vepCsq2["IntronFrame"] = None
+
+            knownSvGene2Df = known_sv_genes_tag_to_dataframe(mate, known_sv_genes_header_desc)
+            knownSvGene2Df['IntronFrame'] = 0
+            vepCsq2 = pd.concat([vepCsq2, knownSvGene2Df[~knownSvGene2Df['SYMBOL'].isin(vepCsq2['SYMBOL'])]], ignore_index=True)
+            vepCsq2 = vepCsq2.where(pd.notna(vepCsq2), None)
+
+            vepCsq2["GeneEffect"] = vepCsq2.apply(lambda r: vepGeneEffect(r), axis=1)
+
+        else:
+            vepCsq2 = pd.DataFrame([{}], columns=vepCsq2.columns)
+
+        # cross vepCsq1 (left) with vepCsq2 (right) for all possible combinations
+        bnd_annot = pd.merge(vepCsq1, vepCsq2, how='cross', suffixes=('_l', '_r'))
         # fillna SYMBOL w/ INTERGENIC and the rest with 0
         bnd_annot[['SYMBOL_l','SYMBOL_r']] = bnd_annot[['SYMBOL_l','SYMBOL_r']].fillna('INTERGENIC')
 
@@ -756,10 +724,8 @@ def main():
         bnd_annot = bnd_annot.sort_values(by=["KnownGene_l", "KnownGene_r", "InframeSplice", "KnownTrx_l", "KnownTrx_r", "PICK_l", "PICK_r"], 
                               ascending=[False, False, False, False, False, False, False]).drop_duplicates(subset=["SYMBOL_l","SYMBOL_r"], keep="first")
 
-        bnd_annot = pd.merge(bnd_annot,recurrent_svs,how='left', left_on=['SYMBOL_l','SYMBOL_r'], right_on=['KNOWNSVGENE1','KNOWNSVGENE2'])
-        is_recurrent = (bnd_annot['KNOWNSVGENE1'].notna()) & \
-                       (bnd_annot['KNOWNSVTYPE'].isna() | bnd_annot['KNOWNSVTYPE'].isin([vartype, '*']))
-        bnd_annot['RecurrentSV'] = np.where(is_recurrent, 1, 0)
+        bnd_annot = pd.merge(bnd_annot,recurrentSvs,how='left', left_on=['SYMBOL_l','SYMBOL_r'], right_on=['KNOWNSVGENE1','KNOWNSVGENE2'])
+        bnd_annot['RecurrentSV'] = bnd_annot.apply(lambda r: 1 if r['KNOWNSVGENE1'] is not None and (r['KNOWNSVTYPE'] is None or r['KNOWNSVTYPE'] == vartype) else 0, axis=1)
 
         # exclude pairs where neither annotation is protein coding
         bnd_annot = bnd_annot[(bnd_annot['KnownGene_l'] == 1) |
@@ -768,9 +734,10 @@ def main():
                                 ((bnd_annot['BIOTYPE_l']=='protein_coding') | (bnd_annot['BIOTYPE_r']=='protein_coding')))]
 
         if not bnd_annot.empty:
-            bnd_annot = _normalize_exon_intron_columns(bnd_annot)
-            bnd_annot.loc[bnd_annot["SYMBOL_l"] == "INTERGENIC", ["EXON_l", "INTRON_l"]] = None
-            bnd_annot.loc[bnd_annot["SYMBOL_r"] == "INTERGENIC", ["EXON_r", "INTRON_r"]] = None
+            bnd_annot['EXON_l'] = bnd_annot.apply(lambda r: r['EXON_l'].split('-')[-1] if r['EXON_l'] and r['SYMBOL_l']!='INTERGENIC' else None,axis=1)
+            bnd_annot['INTRON_l'] = bnd_annot.apply(lambda r: r['INTRON_l'].split('-')[-1] if r['INTRON_l'] and r['SYMBOL_l']!='INTERGENIC' else None,axis=1)
+            bnd_annot['EXON_r'] = bnd_annot.apply(lambda r: r['EXON_r'].split('-')[-1] if r['EXON_r'] and r['SYMBOL_r']!='INTERGENIC' else None,axis=1)
+            bnd_annot['INTRON_r'] = bnd_annot.apply(lambda r: r['INTRON_r'].split('-')[-1] if r['INTRON_r'] and r['SYMBOL_r']!='INTERGENIC' else None,axis=1)
                 
             bnd_annot[['genestring', 'genedetail']] = bnd_annot.apply(
                 lambda row: get_gene_syntax(row, bnd_orientation, chr_l, chr_r),
@@ -793,21 +760,22 @@ def main():
             
             if svtype == "inv" and gene_l == gene_r and region_l == region_r and ("intron" in region_l or "intragenic" in region_l):
                 continue
-            if svtype == "inv" and not any(g in known_gene_set for g in [gene_l, gene_r]):
+            if svtype == "inv" and not knownTrx["Gene"].isin([gene_l, gene_r]).any():
                 continue
 
-            is_recurrent_sv = (bnd_annot.iloc[0]['RecurrentSV'] and 
+            isRecurrentSv = (bnd_annot.iloc[0]['RecurrentSV'] and 
                             (bnd_annot.iloc[0]['InframeSplice'] or bnd_annot.iloc[0]['KNOWNSVREQUIRESTRAND'] == 0))
 
             category = ""
-            if is_recurrent_sv:
-                filter = _clean_recurrent_filter(filter)
+            if isRecurrentSv:
+                filter_list = [f for f in filter.split(";") if f not in ["MaxDepth", "MinSomaticScore"]]
+                filter = "PASS" if not filter_list else ';'.join(filter_list)
 
-            if filter == "PASS" and is_recurrent_sv:
+            if filter == "PASS" and isRecurrentSv:
                 category = "RECURRENTSV"
-            elif filter != "PASS" and is_recurrent_sv:
+            elif filter != "PASS" and isRecurrentSv:
                 category = "OTHERSV"
-            elif filter == "PASS" and (any(g in known_gene_set for g in [gene_l, gene_r]) or (gene_l != "INTERGENIC" and "ENS" not in gene_l and gene_l != "INTERGENIC" and "ENS" not in gene_r)):
+            elif filter == "PASS" and (knownTrx["Gene"].isin([gene_l, gene_r]).any() or (gene_l != "INTERGENIC" and "ENS" not in gene_l and gene_l != "INTERGENIC" and "ENS" not in gene_r)):
                 category = "OTHERSV"
             else:
                 category = None
@@ -815,16 +783,14 @@ def main():
             if len(bnd_annot) > 1:
                 info_dict['OTHERANNOTATIONS'] = '|'.join(bnd_annot['genedetail'].tolist()[1:])
 
-            #info_dict['CASEID'] = caseid
-
             sv_bnd_list.append(dict(zip(svs_df_columns, [
                     category, vartype, chr_l, int(pos_l), chr_r, int(pos_r), svlen,
                     csyntax, psyntax, bandstring, genestring, genedetail, total_genes,
-                    filter, str(variant.id) + ";" + str(mate.id), abundance, _serialize_info_dict(info_dict)
+                    filter, str(variant.id) + ";" + str(mate.id), abundance, ';'.join([f"{k}={v}" for k, v in info_dict.items()])
                 ])))
         
-        processed_variant_ids.add(variant.id)
-        processed_variant_ids.add(mate.id)
+        alreadydone.add(variant.id)
+        alreadydone.add(mate.id)
 
     # Concatenate only if there are records to add
     if sv_bnd_list:
