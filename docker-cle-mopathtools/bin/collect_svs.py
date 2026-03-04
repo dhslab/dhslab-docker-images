@@ -12,6 +12,8 @@ import pandas as pd
 import pysam
 import natsort
 
+from compression import gzip
+
 __version__ = "1.0.0"
 
 ACROCENTRICS = ["chr13", "chr14", "chr15", "chr21", "chr22"]
@@ -268,7 +270,7 @@ def main():
     parser = argparse.ArgumentParser(description="Collect Structural Variants from ChromoSeq output.")
     parser.add_argument("--sv_vcf", required=True, type=checkfile, help="Annotated SV VCF file (*.sv_annotated.vcf.gz)")
     parser.add_argument("--sv_targets", required=True, type=checkfile, help="Recurrent SV target list CSV")
-    parser.add_argument("--bedfile", required=True, type=checkfile, help="Mopath formatted bedfile or coverage report")
+    parser.add_argument("--bed_file", required=True, type=checkfile, help="Mopath formatted bedfile or coverage report")
     parser.add_argument("--outfile", type=str, help="Output tab-delimited file. If not provided, output is written to stdout.")
     parser.add_argument("--version", "-v", action="version", version="%(prog)s: " + __version__)
     args = parser.parse_args()
@@ -299,8 +301,15 @@ def main():
     recurrentSvs = recurrentSvs.where(pd.notna(recurrentSvs), None)
 
     # Load coverage report to get gene/transcript info
-    with open(args.bedfile, "r") as f:
-        lines = f.readlines()
+    # Handle uncompressed or gzipped files
+    lines = []
+    if args.bed_file.endswith(".gz"):
+        with gzip.open(args.bed_file, "rt") as f:
+            lines = f.readlines()
+    else:
+        with open(args.bed_file, "r") as f:
+            lines = f.readlines()
+
     header_line = lines[0].replace("#", "").strip()
     covDf = pd.read_csv(
         args.bedfile,
