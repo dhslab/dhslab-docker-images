@@ -442,7 +442,6 @@ def main():
     parser.add_argument("--sv_targets", required=True, type=checkfile, help="Recurrent SV target list CSV")
     parser.add_argument("--cov_report", required=True, type=checkfile, help="Coverage report TSV (*.coverage_report.tsv)")
     parser.add_argument("--outfile", type=str, help="Output tab-delimited file. If not provided, output is written to stdout.")
-    parser.add_argument("--reference", help="Reference fasta (required for CRAM, optional for VCF)")
     parser.add_argument("--version", "-v", action="version", version="%(prog)s: " + __version__)
     args = parser.parse_args()
 
