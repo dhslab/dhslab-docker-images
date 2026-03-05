@@ -269,7 +269,7 @@ def get_gene_syntax(row, bnd_orientation, chr_l, chr_r):
     return genestring, genedetail
 
 def main():
-    parser = argparse.ArgumentParser(description="Collect Structural Variants from ChromoSeq output.")
+    parser = argparse.ArgumentParser(description="Collect Structural Variants from an annotated SV vcf file.")
     parser.add_argument("--sv_vcf", required=True, type=checkfile, help="Annotated SV VCF file (*.sv_annotated.vcf.gz)")
     parser.add_argument("--sv_targets", required=True, type=checkfile, help="Recurrent SV target list CSV")
     parser.add_argument("--bed_file", required=True, type=checkfile, help="Mopath formatted bedfile or coverage report")
