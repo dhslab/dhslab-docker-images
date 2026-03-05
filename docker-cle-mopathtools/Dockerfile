@@ -43,5 +43,6 @@ RUN python -m pip install --no-cache-dir \
     natsort
 
 COPY bin/*.py /usr/local/bin/ 
+
 RUN chmod +x /usr/local/bin/*.py
 
