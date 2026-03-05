@@ -5,14 +5,11 @@ import json
 import os
 import re
 import sys
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pysam
 import natsort
-
-from compression import gzip
 
 __version__ = "1.0.0"
 
@@ -189,23 +186,28 @@ def known_sv_genes_tag_to_dataframe(variant, header_description: str) -> pd.Data
     return df
 
 def vepGeneEffect(row):
-    # if row is all None, return None
-    if row.isna().all():
-        return None
-    
-    if row["EXON"] and '/' in row["EXON"]:
-        return f"exon{row['EXON'].split('/')[0]}"
-    elif row["INTRON"] and '/' in row["INTRON"]:
-        return f"intron{row['INTRON'].split('/')[0]}"
-    elif row["DISTANCE"] and row["DISTANCE"]>0:
-        if "upstream" in row["Consequence"]:
-            return f"{row['DISTANCE']}bp upstream"
-        elif "downstream" in row["Consequence"]:
-            return f"{row['DISTANCE']}bp downstream"
-        else:
-            return ""
-    else:
-        return "intragenic"
+    exon = row.get("EXON")
+    intron = row.get("INTRON")
+    dist = row.get("DISTANCE")
+    cons = row.get("Consequence")
+
+    if isinstance(exon, str) and "/" in exon:
+        return f"exon{exon.split('/')[0]}"
+    elif isinstance(intron, str) and "/" in intron:
+        return f"intron{intron.split('/')[0]}"
+    elif pd.notna(dist) and dist > 0:
+        if isinstance(cons, str) and "upstream" in cons:
+            return f"{int(dist)}bp upstream"
+        elif isinstance(cons, str) and "downstream" in cons:
+            return f"{int(dist)}bp downstream"
+        return ""
+    return "intragenic"
+
+def _tail_or_none(value):
+    if isinstance(value, str) and value:
+        return value.split("-")[-1]
+    return None
+
 
 def get_gene_syntax(row, bnd_orientation, chr_l, chr_r):
     """Calculates gene-based syntax (genestring and genedetail) for a BND annotation row."""
@@ -300,22 +302,11 @@ def main():
     recurrentSvs.columns = ["KNOWNSVGENE1", "KNOWNSVGENE2", "KNOWNSVREQUIRESTRAND", "KNOWNSVTYPE"]
     recurrentSvs = recurrentSvs.where(pd.notna(recurrentSvs), None)
 
-    # Load coverage report to get gene/transcript info
-    # Handle uncompressed or gzipped files
-    lines = []
-    if args.bed_file.endswith(".gz"):
-        with gzip.open(args.bed_file, "rt") as f:
-            lines = f.readlines()
-    else:
-        with open(args.bed_file, "r") as f:
-            lines = f.readlines()
-
-    header_line = lines[0].replace("#", "").strip()
     covDf = pd.read_csv(
         args.bed_file,
         header=None,
         skiprows=1,
-        names=["Chromosome", "Start", "End", "Gene", "Info"] + header_line.split("\t")[5:],
+        names=["Chromosome", "Start", "End", "Gene", "Info"],
         sep="\t",
     )
     geneCovDf = covDf[covDf["Info"].str.contains("exon")]
@@ -451,7 +442,7 @@ def main():
                 vepCsq = vepCsq.sort_values(by=["START"], ascending=[True])
                 vepCsq["GeneEffect"] = vepCsq.apply(lambda r: vepGeneEffect(r), axis=1)
                 vepCsq["GeneImpact"] = vepCsq["Consequence"].apply(
-                    lambda r: int(len(set(r.split("&")) & set(nonSynon)) > 0 if r else None)
+                    lambda r: int(len(set(r.split("&")) & set(nonSynon)) > 0) if isinstance(r, str) and r else None
                 )
 
             # Format DEL/DUP events
@@ -545,10 +536,10 @@ def main():
                                                         ((candidate_fusions['BIOTYPE_l']=='protein_coding') | (candidate_fusions['BIOTYPE_r']=='protein_coding')))]
 
                 if not candidate_fusions.empty:
-                    candidate_fusions['EXON_l'] = candidate_fusions.apply(lambda r: r['EXON_l'].split('-')[-1] if r['EXON_l'] else None,axis=1)
-                    candidate_fusions['INTRON_l'] = candidate_fusions.apply(lambda r: r['INTRON_l'].split('-')[-1] if r['INTRON_l'] else None,axis=1)
-                    candidate_fusions['EXON_r'] = candidate_fusions.apply(lambda r: r['EXON_r'].split('-')[-1] if r['EXON_r'] else None,axis=1)
-                    candidate_fusions['INTRON_r'] = candidate_fusions.apply(lambda r: r['INTRON_r'].split('-')[-1] if r['INTRON_r'] else None,axis=1)
+                    candidate_fusions['EXON_l'] = candidate_fusions['EXON_l'].apply(_tail_or_none)
+                    candidate_fusions['INTRON_l'] = candidate_fusions['INTRON_l'].apply(_tail_or_none)
+                    candidate_fusions['EXON_r'] = candidate_fusions['EXON_r'].apply(_tail_or_none)
+                    candidate_fusions['INTRON_r'] = candidate_fusions['INTRON_r'].apply(_tail_or_none)
                     candidate_fusions['SYMBOL_l'] = candidate_fusions['SYMBOL_l'].fillna('INTERGENIC')
                     candidate_fusions['SYMBOL_r'] = candidate_fusions['SYMBOL_r'].fillna('INTERGENIC')
 
@@ -742,10 +733,10 @@ def main():
                                 ((bnd_annot['BIOTYPE_l']=='protein_coding') | (bnd_annot['BIOTYPE_r']=='protein_coding')))]
 
         if not bnd_annot.empty:
-            bnd_annot['EXON_l'] = bnd_annot.apply(lambda r: r['EXON_l'].split('-')[-1] if r['EXON_l'] and r['SYMBOL_l']!='INTERGENIC' else None,axis=1)
-            bnd_annot['INTRON_l'] = bnd_annot.apply(lambda r: r['INTRON_l'].split('-')[-1] if r['INTRON_l'] and r['SYMBOL_l']!='INTERGENIC' else None,axis=1)
-            bnd_annot['EXON_r'] = bnd_annot.apply(lambda r: r['EXON_r'].split('-')[-1] if r['EXON_r'] and r['SYMBOL_r']!='INTERGENIC' else None,axis=1)
-            bnd_annot['INTRON_r'] = bnd_annot.apply(lambda r: r['INTRON_r'].split('-')[-1] if r['INTRON_r'] and r['SYMBOL_r']!='INTERGENIC' else None,axis=1)
+            bnd_annot['EXON_l'] = bnd_annot.apply(lambda r: _tail_or_none(r['EXON_l']) if r['SYMBOL_l']!='INTERGENIC' else None,axis=1)
+            bnd_annot['INTRON_l'] = bnd_annot.apply(lambda r: _tail_or_none(r['INTRON_l']) if r['SYMBOL_l']!='INTERGENIC' else None,axis=1)
+            bnd_annot['EXON_r'] = bnd_annot.apply(lambda r: _tail_or_none(r['EXON_r']) if r['SYMBOL_r']!='INTERGENIC' else None,axis=1)
+            bnd_annot['INTRON_r'] = bnd_annot.apply(lambda r: _tail_or_none(r['INTRON_r']) if r['SYMBOL_r']!='INTERGENIC' else None,axis=1)
                 
             bnd_annot[['genestring', 'genedetail']] = bnd_annot.apply(
                 lambda row: get_gene_syntax(row, bnd_orientation, chr_l, chr_r),
