@@ -312,7 +312,7 @@ def main():
 
     header_line = lines[0].replace("#", "").strip()
     covDf = pd.read_csv(
-        args.bedfile,
+        args.bed_file,
         header=None,
         skiprows=1,
         names=["Chromosome", "Start", "End", "Gene", "Info"] + header_line.split("\t")[5:],
