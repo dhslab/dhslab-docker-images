@@ -529,8 +529,9 @@ def main():
                                     .reset_index(drop=True))
 
                 candidate_fusions = pd.merge(candidate_fusions,recurrentSvs,how='left', left_on=['SYMBOL_l','SYMBOL_r'], right_on=['KNOWNSVGENE1','KNOWNSVGENE2'])
-                candidate_fusions['RecurrentSV'] = candidate_fusions.apply(lambda r: 1 if r['KNOWNSVGENE1'] is not None and (r['KNOWNSVTYPE'] is None or r['KNOWNSVTYPE'] == vartype) else 0, axis=1)
-
+                mask = (candidate_fusions['KNOWNSVGENE1'].notna() &
+                        (candidate_fusions['KNOWNSVTYPE'].isna() | (candidate_fusions['KNOWNSVTYPE'] == vartype)))
+                candidate_fusions['RecurrentSV'] = np.where(mask, 1, 0)
                 candidate_fusions = candidate_fusions[(candidate_fusions['RecurrentSV'] == 1) |
                                                         ((candidate_fusions['SYMBOL_l'] != candidate_fusions['SYMBOL_r']) & 
                                                         ((candidate_fusions['BIOTYPE_l']=='protein_coding') | (candidate_fusions['BIOTYPE_r']=='protein_coding')))]
@@ -724,8 +725,9 @@ def main():
                               ascending=[False, False, False, False, False, False, False]).drop_duplicates(subset=["SYMBOL_l","SYMBOL_r"], keep="first")
 
         bnd_annot = pd.merge(bnd_annot,recurrentSvs,how='left', left_on=['SYMBOL_l','SYMBOL_r'], right_on=['KNOWNSVGENE1','KNOWNSVGENE2'])
-        bnd_annot['RecurrentSV'] = bnd_annot.apply(lambda r: 1 if r['KNOWNSVGENE1'] is not None and (r['KNOWNSVTYPE'] is None or r['KNOWNSVTYPE'] == vartype) else 0, axis=1)
-
+        mask = (bnd_annot['KNOWNSVGENE1'].notna() &
+                (bnd_annot['KNOWNSVTYPE'].isna() | (bnd_annot['KNOWNSVTYPE'] == vartype)))
+        bnd_annot['RecurrentSV'] = np.where(mask, 1, 0)
         # exclude pairs where neither annotation is protein coding
         bnd_annot = bnd_annot[(bnd_annot['KnownGene_l'] == 1) |
                                 (bnd_annot['KnownGene_r'] == 1) |
