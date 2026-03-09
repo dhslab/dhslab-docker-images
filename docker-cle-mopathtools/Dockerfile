@@ -35,12 +35,12 @@ RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Extra runtime deps used by shipped scripts but not declared in mopathtools package metadata.
 RUN python -m pip install --no-cache-dir \
+    natsort \
     pyranges \
     biopython \
     numpy \
     pandas \
-    pysam \
-    natsort
+    pysam
 
 COPY bin/*.py /usr/local/bin/ 
 
