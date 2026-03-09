@@ -89,6 +89,20 @@ def main():
         help="Reverse complement indexes according to the RunInfo.",
     )
     parser.add_argument(
+        "-u",
+        "--umis",        
+        action="store_true",
+        default=False,
+        help="Add UMI cycles to the cycle string according to the RunInfo.",
+    )
+    parser.add_argument(
+        "-t",
+        "--trim-adapters",
+        action="store_true",
+        default=False,
+        help="Add adapter trimming to the BCL Convert settings.",
+    )
+    parser.add_argument(
         "-r", "--rundir", type=checkfile, help="Path to the Illumina run folder"
     )
     parser.add_argument(
@@ -125,16 +139,31 @@ def main():
         df["Index2"] = df["Index2"].apply(reverse_complement)
 
     # make cycle string
-    cycle_str = "Y" + str(runinfo["Read1Cycles"]) + ";I10"
-    if runinfo["Index1Cycles"] > 10:
-        cycle_str = cycle_str + "N" + str(runinfo["Index1Cycles"] - 10)
+    cycle_str = ''
 
-    if runinfo["Index2Cycles"] > 10:
-        cycle_str = cycle_str + ";N" + str(runinfo["Index2Cycles"]-10) + "I10"
+    if args.umis:
+        cycle_str = 'Y' + str(runinfo['Read1Cycles']) + ';I10U9'
+        if runinfo['Index1Cycles'] > 19:
+            cycle_str = cycle_str + 'N' + str(runinfo['Index1Cycles']-19)
+
+        if runinfo['Index2Cycles'] > 10:
+            cycle_str = cycle_str + ';N' + str(runinfo['Index2Cycles']-10) + 'I10'
+        else:
+            cycle_str = cycle_str + ';I10'
+        
+        cycle_str = cycle_str + ';Y' + str(runinfo['Read2Cycles'])
+
     else:
-        cycle_str = cycle_str + ";I10"
+        cycle_str = "Y" + str(runinfo["Read1Cycles"]) + ";I10"
+        if runinfo["Index1Cycles"] > 10:
+            cycle_str = cycle_str + "N" + str(runinfo["Index1Cycles"] - 10)
 
-    cycle_str = cycle_str + ";Y" + str(runinfo["Read2Cycles"])
+        if runinfo["Index2Cycles"] > 10:
+            cycle_str = cycle_str + ";N" + str(runinfo["Index2Cycles"]-10) + "I10"
+        else:
+            cycle_str = cycle_str + ";I10"
+
+        cycle_str = cycle_str + ";Y" + str(runinfo["Read2Cycles"])
 
     # Initialize a list to store rows
     rows_list = []
@@ -158,7 +187,12 @@ def main():
     # Write the header for the output file
     outfile = open(args.outfile, "w")
     outfile.write("[Header]\nFileFormatVersion,2\n\n")
-    outfile.write(f"[BCLConvert_Settings]\nOverrideCycles,{cycle_str}\n\n")
+
+    if args.trim_adapters:
+        outfile.write(f"[BCLConvert_Settings]\nAdapterBehavior,trim\nAdapterRead1,AGATCGGAAGAGCACACGTCTGAAC\nAdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGA\nOverrideCycles,{cycle_str}\n\n")
+    else:
+        outfile.write(f"[BCLConvert_Settings]\nOverrideCycles,{cycle_str}\n\n")
+
     outfile.write("[BCLConvert_Data]\n")
 
     # Append the processed data to the file
