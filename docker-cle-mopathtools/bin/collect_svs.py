@@ -170,15 +170,15 @@ def known_sv_genes_tag_to_dataframe(variant, header_description: str) -> pd.Data
     
     # Determine the Consequence based on overlap and strand
     def get_consequence(row):
-        if row["DISTANCE"] == 0 and (row["END"] > pos1 or row["START"] < pos2): # breakpoint is within gene
-            return "transcript_ablation"
         if row["DISTANCE"] == 0 and row["START"] > pos1 and row["END"] < pos2: # SV spans gene
             # if variant.info.get("SVTYPE") == "DEL" return deletion if DUP return transcript_amplification
             if variant.info.get("SVTYPE") == "DEL":
                 return "deletion"
             else:
                 return "transcript_amplification"
-        if (row["STRAND"] == "+" and row["START"] > pos2) or (row["STRAND"] == "-" and row["END"] < pos1):
+        if row["DISTANCE"] == 0 and ((row["START"] <= pos1 <= row["END"]) or (row["START"] <= pos2 <= row["END"])): # breakpoint is within gene
+            return "transcript_ablation"
+        if (row["STRAND"] == 1 and row["START"] > pos2) or (row["STRAND"] == -1 and row["END"] < pos1):
             return "upstream_gene_variant"
         return "downstream_gene_variant"
     df["Consequence"] = df.apply(get_consequence, axis=1)
@@ -208,15 +208,20 @@ def _tail_or_none(value):
         return value.split("-")[-1]
     return None
 
+def _first_sample_call(variant):
+    for sample in variant.samples.values():
+        return sample
+    return {}
 
-def get_gene_syntax(row, bnd_orientation, chr_l, chr_r):
+
+def get_gene_syntax(row, bnd_orientation, chr_l, chr_r, vartype=None):
     """Calculates gene-based syntax (genestring and genedetail) for a BND annotation row."""
     gene_l = row.get("SYMBOL_l") or "INTERGENIC"
-    region_l = "N/A" if gene_l == "INTERGENIC" else f"{row.get('Feature_l')}:{row.get('GeneEffect_l')}"
+    region_l = "" if gene_l == "INTERGENIC" else f"({row.get('Feature_l')}:{row.get('GeneEffect_l')})"
     strand_l = row.get("STRAND_l") or 0
 
     gene_r = row.get("SYMBOL_r") or "INTERGENIC"
-    region_r = "N/A" if gene_r == "INTERGENIC" else f"{row.get('Feature_r')}:{row.get('GeneEffect_r')}"
+    region_r = "" if gene_r == "INTERGENIC" else f"({row.get('Feature_r')}:{row.get('GeneEffect_r')})"
     strand_r = row.get("STRAND_r") or 0
 
     require_strand = row.get("KNOWNSVREQUIRESTRAND", 1)
@@ -233,38 +238,49 @@ def get_gene_syntax(row, bnd_orientation, chr_l, chr_r):
 
     # This is an in-frame fusion in the correct orientation for transcription
     if fusion_orientation >= 0:
-        gene_separator = "(::)" if inframe_splice or not require_strand else "(--)"
+        gene_separator = "::" #if inframe_splice or not require_strand else "(--)"
         gene_separator_detail = "(::)" if inframe_splice else "(--)"
 
-        if strand_l == 1:  # FWD strand, left to right
-            genestring = f"{gene_l}{gene_separator}{gene_r}"
-            genedetail = f"{gene_l}(+)({region_l}){gene_separator_detail}{gene_r}(+)({region_r})"
+        if vartype == "INV":
+            if strand_l == 1:  # FWD strand, left to right
+                genestring = f"{gene_l}{gene_separator}{gene_r}"
+                genedetail = f"{gene_l}(+){region_l}{gene_separator_detail}{gene_r}(+){region_r}"
 
-        elif strand_l == -1:  # REV strand, right to left
-            genestring = f"{gene_r}{gene_separator}{gene_l}"
-            genedetail = f"{gene_r}(-)({region_r}){gene_separator_detail}{gene_l}(-)({region_l})"
+            elif strand_l == -1:  # REV strand, right to left
+                genestring = f"{gene_l}{gene_separator}{gene_r}"
+                genedetail = f"{gene_l}(-){region_l}{gene_separator_detail}{gene_r}(-){region_r}"
+
+        else:
+            if strand_l == 1:  # FWD strand, left to right
+                genestring = f"{gene_l}{gene_separator}{gene_r}"
+                genedetail = f"{gene_l}(+){region_l}{gene_separator_detail}{gene_r}(+){region_r}"
+
+            elif strand_l == -1:  # REV strand, right to left
+                genestring = f"{gene_r}{gene_separator}{gene_l}"
+                genedetail = f"{gene_r}(-){region_r}{gene_separator_detail}{gene_l}(-){region_l}"
 
     # Genes are not in the proper orientation for a fusion
     else:
-        gene_separator = "//"
+        gene_separator = "::"
+        gene_separator_detail = "//"
         
         # Order genes by chromosome number
         if chr_l in ['chrX', 'chrY', 'chrM'] or int(chr_l_num_str) < int(chr_r_num_str):
             genestring = f"{gene_l}{gene_separator}{gene_r}"
             if gene_l == "INTERGENIC":
-                genedetail = f"{gene_l}({region_l}){gene_separator}{gene_r}({'+' if strand_r == 1 else '-'})({region_r})"
+                genedetail = f"{gene_l}{region_l}{gene_separator_detail}{gene_r}({'+' if strand_r == 1 else '-'}){region_r}"
             elif gene_r == "INTERGENIC":
-                genedetail = f"{gene_l}({'+' if strand_l == 1 else '-'})({region_l}){gene_separator}{gene_r}({region_r})"
+                genedetail = f"{gene_l}({'+' if strand_l == 1 else '-'}){region_l}{gene_separator_detail}{gene_r}{region_r}"
             else:
-                genedetail = f"{gene_l}({'+' if strand_l == 1 else '-'})({region_l}){gene_separator}{gene_r}({'+' if strand_r == 1 else '-'})({region_r})"
+                genedetail = f"{gene_l}({'+' if strand_l == 1 else '-'}){region_l}{gene_separator_detail}{gene_r}({'+' if strand_r == 1 else '-'}){region_r}"
         else:
             genestring = f"{gene_r}{gene_separator}{gene_l}"
             if gene_l == "INTERGENIC":
-                genedetail = f"{gene_r}({'+' if strand_r == 1 else '-'})({region_r}){gene_separator}{gene_l}({region_l})"
+                genedetail = f"{gene_r}({'+' if strand_r == 1 else '-'}){region_r}{gene_separator_detail}{gene_l}{region_l}"
             elif gene_r == "INTERGENIC":
-                genedetail = f"{gene_r}({region_r}){gene_separator}{gene_l}({'+' if strand_l == 1 else '-'})({region_l})"
+                genedetail = f"{gene_r}{region_r}{gene_separator_detail}{gene_l}({'+' if strand_l == 1 else '-'}){region_l}"
             else:
-                genedetail = f"{gene_r}({'+' if strand_r == 1 else '-'})({region_r}){gene_separator}{gene_l}({'+' if strand_l == 1 else '-'})({region_l})"
+                genedetail = f"{gene_r}({'+' if strand_r == 1 else '-'}){region_r}{gene_separator_detail}{gene_l}({'+' if strand_l == 1 else '-'}){region_l}"
 
     return genestring, genedetail
 
@@ -314,7 +330,7 @@ def main():
 
     ids = (
         geneCovDf["Info"]
-        .str.split("|", expand=True)
+        .str.split(r"\|", expand=True)
         .replace("\s\+\s\S+", "", regex=True)
         .loc[:, 2:]
     )
@@ -332,7 +348,7 @@ def main():
 
     ids = (
         svCovDf["Info"]
-        .str.split("|", expand=True)
+        .str.split(r"\|", expand=True)
         .replace("\s\+\s\S+", "", regex=True)
         .loc[:, 2:]
     )
@@ -360,7 +376,7 @@ def main():
     # Process SVs
     print("Gathering SVs...", file=sys.stderr)
     svvcf = pysam.VariantFile(args.sv_vcf)
-    csq_header_desc = svvcf.header.info['CSQ'].description
+    csq_header_desc = svvcf.header.info['CSQ'].description if 'CSQ' in svvcf.header.info else ""
     known_sv_genes_header_desc = ""
     if 'KnownSvGenes' in svvcf.header.info:
         known_sv_genes_header_desc = svvcf.header.info['KnownSvGenes'].description
@@ -396,10 +412,11 @@ def main():
             abundance = 0.0
             PR = (0, 0)
             SR = (0, 0)
-            if "SR" in variant.samples[0] and variant.samples[0]["SR"][0] is not None:
-                SR = variant.samples[0]["SR"]
-            if "PR" in variant.samples[0] and variant.samples[0]["PR"][0] is not None:
-                PR = variant.samples[0]["PR"]
+            sample_call = _first_sample_call(variant)
+            if "SR" in sample_call and sample_call["SR"][0] is not None:
+                SR = sample_call["SR"]
+            if "PR" in sample_call and sample_call["PR"][0] is not None:
+                PR = sample_call["PR"]
 
             denominator = PR[0] + PR[1] + SR[0] + SR[1]
             abundance = round((SR[1] + PR[1]) / denominator * 100, 1) if denominator > 0 else 0.0
@@ -545,7 +562,7 @@ def main():
                     candidate_fusions['SYMBOL_r'] = candidate_fusions['SYMBOL_r'].fillna('INTERGENIC')
 
                     candidate_fusions[['genestring', 'genedetail']] = candidate_fusions.apply(
-                        lambda row: get_gene_syntax(row, 1, chr1, chr1),
+                        lambda row: get_gene_syntax(row, 1, chr1, chr1, vartype),
                         axis=1,
                         result_type='expand'
                     )
@@ -593,13 +610,13 @@ def main():
            ("CSQ" not in variant.info or "CSQ" not in mate.info):
             continue
 
+        vartype = variant.info.get("SVTYPE")
         # swap variant and mate if variant is downstream of mate
-        if variant.alts[0].find("[") == 0 or variant.alts[0].find("]") == 0:
+        if (variant.alts[0].find("[") == 0 or variant.alts[0].find("]") == 0):
             variant, mate = mate, variant
 
         bnd_orientation = -1 if variant.alts[0].find("[") == 0 or variant.alts[0].find("]") > 0 else 1
 
-        vartype = variant.info.get("SVTYPE")
         filter_keys = list(variant.filter.keys())
         filter = "PASS" if not filter_keys else ";".join(filter_keys)
 
@@ -619,10 +636,10 @@ def main():
         if "Cytobands" in mate.info and mate.info.get("Cytobands") is not None:
             bands_r = mate.info.get("Cytobands")[0].replace("acen_", "")
 
-                # make ISCN syntax
+        # make ISCN syntax
         svtype = None
         chr_l_num_str = chr_l.replace('chr', '').replace('X', '-1').replace('Y', '-2').replace('M', '-3')
-        chr_r_num_str = chr_r.replace('chr', '').replace('X', '-1').replace('Y', '-2').replace('M', '3')
+        chr_r_num_str = chr_r.replace('chr', '').replace('X', '-1').replace('Y', '-2').replace('M', '-3')
 
         if vartype == "INV":
             svtype = "inv"
@@ -645,10 +662,11 @@ def main():
         # Calculate abundance from read counts
         PR = (0, 0)
         SR = (0, 0)
-        if "SR" in variant.samples[0] and variant.samples[0]["SR"][0] is not None:
-            SR = variant.samples[0]["SR"]
-        if "PR" in variant.samples[0] and variant.samples[0]["PR"][0] is not None:
-            PR = variant.samples[0]["PR"]
+        sample_call = _first_sample_call(variant)
+        if "SR" in sample_call and sample_call["SR"][0] is not None:
+            SR = sample_call["SR"]
+        if "PR" in sample_call and sample_call["PR"][0] is not None:
+            PR = sample_call["PR"]
         
         if "DUX" in variant.id:
             SR = (0, SR[1])
@@ -680,6 +698,7 @@ def main():
 
         else:
             vepCsq1 = pd.DataFrame([{}], columns=vepCsq1.columns)
+            vepCsq1["GeneEffect"] = None
 
         vepCsq2 = vep_csq_to_dataframe(mate.info.get("CSQ"), csq_header_desc)
         vepCsq2 = vepCsq2[(vepCsq2['Allele']==mate.ref) | (vepCsq2['Allele']=="BND")].reset_index(drop=True)
@@ -699,6 +718,7 @@ def main():
 
         else:
             vepCsq2 = pd.DataFrame([{}], columns=vepCsq2.columns)
+            vepCsq2["GeneEffect"] = None
 
         # cross vepCsq1 (left) with vepCsq2 (right) for all possible combinations
         bnd_annot = pd.merge(vepCsq1, vepCsq2, how='cross', suffixes=('_l', '_r'))
@@ -728,6 +748,7 @@ def main():
         mask = (bnd_annot['KNOWNSVGENE1'].notna() &
                 (bnd_annot['KNOWNSVTYPE'].isna() | (bnd_annot['KNOWNSVTYPE'] == vartype)))
         bnd_annot['RecurrentSV'] = np.where(mask, 1, 0)
+        
         # exclude pairs where neither annotation is protein coding
         bnd_annot = bnd_annot[(bnd_annot['KnownGene_l'] == 1) |
                                 (bnd_annot['KnownGene_r'] == 1) |
@@ -741,7 +762,7 @@ def main():
             bnd_annot['INTRON_r'] = bnd_annot.apply(lambda r: _tail_or_none(r['INTRON_r']) if r['SYMBOL_r']!='INTERGENIC' else None,axis=1)
                 
             bnd_annot[['genestring', 'genedetail']] = bnd_annot.apply(
-                lambda row: get_gene_syntax(row, bnd_orientation, chr_l, chr_r),
+                lambda row: get_gene_syntax(row, bnd_orientation, chr_l, chr_r, vartype),
                 axis=1,
                 result_type='expand'
             )
@@ -764,8 +785,11 @@ def main():
             if svtype == "inv" and not knownTrx["Gene"].isin([gene_l, gene_r]).any():
                 continue
 
-            isRecurrentSv = (bnd_annot.iloc[0]['RecurrentSV'] and 
-                            (bnd_annot.iloc[0]['InframeSplice'] or bnd_annot.iloc[0]['KNOWNSVREQUIRESTRAND'] == 0))
+# This logic will only call an event recurrent if its inframe
+#            isRecurrentSv = (bnd_annot.iloc[0]['RecurrentSV'] and 
+#                            (bnd_annot.iloc[0]['InframeSplice'] or bnd_annot.iloc[0]['KNOWNSVREQUIRESTRAND'] == 0))
+ 
+            isRecurrentSv = bnd_annot.iloc[0]['RecurrentSV']
 
             category = ""
             if isRecurrentSv:
