@@ -325,14 +325,13 @@ def main():
         names=["Chromosome", "Start", "End", "Gene", "Info"],
         sep="\t",
     )
-    geneCovDf = covDf[covDf["Info"].str.contains("exon")]
-    svCovDf = covDf[covDf["Info"].str.contains(r"transcript|gene", regex=True)]
+    geneCovDf = covDf[covDf["Info"].str.contains(r"^gene",regex=True)]
+    svCovDf = covDf[covDf["Info"].str.contains(r"^sv",regex=True)]
 
     ids = (
         geneCovDf["Info"]
         .str.split(r"\|", expand=True)
-        .replace("\s\+\s\S+", "", regex=True)
-        .loc[:, 2:]
+        .loc[:, 3:]
     )
     ids.columns = ["Transcript", "Region", "cdsStart", "cdsEnd", "strand"]
     geneTrx = (
@@ -349,8 +348,7 @@ def main():
     ids = (
         svCovDf["Info"]
         .str.split(r"\|", expand=True)
-        .replace("\s\+\s\S+", "", regex=True)
-        .loc[:, 2:]
+        .loc[:, 3:]
     )
     ids.columns = ["Transcript", "Region", "cdsStart", "cdsEnd", "strand"]
     svTrx = pd.concat([svCovDf, ids], axis=1)[
@@ -685,12 +683,14 @@ def main():
         if not vepCsq1.empty:
             vepCsq1["KnownTrx"] = vepCsq1["Feature"].isin(knownTrx["Transcript"]).astype(int)
             vepCsq1["KnownGene"] = vepCsq1["SYMBOL"].isin(knownTrx["Gene"]).astype(int)
-
-            if "IntronFrame" not in vepCsq1.columns:
-                vepCsq1["IntronFrame"] = None
+            
+            for col in ["IntronFrame", "ExonFrame"]:
+                if col not in vepCsq1.columns:
+                    vepCsq1[col] = None
                     
             knownSvGene1Df = known_sv_genes_tag_to_dataframe(variant, known_sv_genes_header_desc)
             knownSvGene1Df['IntronFrame'] = 0
+            knownSvGene1Df['ExonFrame'] = 0
             vepCsq1 = pd.concat([vepCsq1, knownSvGene1Df[~knownSvGene1Df['SYMBOL'].isin(vepCsq1['SYMBOL'])]], ignore_index=True)
             vepCsq1 = vepCsq1.where(pd.notna(vepCsq1), None)
 
@@ -698,7 +698,9 @@ def main():
 
         else:
             vepCsq1 = pd.DataFrame([{}], columns=vepCsq1.columns)
-            vepCsq1["GeneEffect"] = None
+            for col in ["IntronFrame", "ExonFrame","GeneEffect"]:
+                if col not in vepCsq1.columns:
+                    vepCsq1[col] = None
 
         vepCsq2 = vep_csq_to_dataframe(mate.info.get("CSQ"), csq_header_desc)
         vepCsq2 = vepCsq2[(vepCsq2['Allele']==mate.ref) | (vepCsq2['Allele']=="BND")].reset_index(drop=True)
@@ -706,11 +708,13 @@ def main():
             vepCsq2["KnownTrx"] = vepCsq2["Feature"].isin(knownTrx["Transcript"]).astype(int)
             vepCsq2["KnownGene"] = vepCsq2["SYMBOL"].isin(knownTrx["Gene"]).astype(int)
 
-            if "IntronFrame" not in vepCsq2.columns:
-                vepCsq2["IntronFrame"] = None
+            for col in ["IntronFrame", "ExonFrame","GeneEffect"]:
+                if col not in vepCsq2.columns:
+                    vepCsq2[col] = None
 
             knownSvGene2Df = known_sv_genes_tag_to_dataframe(mate, known_sv_genes_header_desc)
             knownSvGene2Df['IntronFrame'] = 0
+            knownSvGene2Df['ExonFrame'] = 0
             vepCsq2 = pd.concat([vepCsq2, knownSvGene2Df[~knownSvGene2Df['SYMBOL'].isin(vepCsq2['SYMBOL'])]], ignore_index=True)
             vepCsq2 = vepCsq2.where(pd.notna(vepCsq2), None)
 
@@ -718,7 +722,10 @@ def main():
 
         else:
             vepCsq2 = pd.DataFrame([{}], columns=vepCsq2.columns)
-            vepCsq2["GeneEffect"] = None
+            for col in ["IntronFrame", "ExonFrame","GeneEffect"]:
+                if col not in vepCsq2.columns:
+                    vepCsq2[col] = None
+
 
         # cross vepCsq1 (left) with vepCsq2 (right) for all possible combinations
         bnd_annot = pd.merge(vepCsq1, vepCsq2, how='cross', suffixes=('_l', '_r'))

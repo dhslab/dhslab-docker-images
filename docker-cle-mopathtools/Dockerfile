@@ -39,8 +39,8 @@ RUN python -m pip install --no-cache-dir \
     biopython \
     pyranges \
     numpy \  
-    pysam \
-    pandas
+    pandas \
+    pysam
 
 COPY bin/*.py /usr/local/bin/ 
 

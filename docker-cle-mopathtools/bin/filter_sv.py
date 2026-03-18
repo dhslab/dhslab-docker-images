@@ -24,18 +24,11 @@ def fileexists(file_path):
 
 # read transcript list
 def get_bed_transcripts(file_path):
-    """
-    Reads a file that is either gzipped or plain text and parses it.
-    """
     df = pd.read_csv(file_path, sep="\t", header=None, names=["chrom", "start", "end", "gene", "info"])
     # extract transcript IDs
     df['transcript'] = (df["info"]
     .str.split("|", expand=True)
-    .replace("\s\+\s\S+", "", regex=True)
-    .loc[:, 2].tolist())
-    # remove \s+?| from info column
-    df["info"] = df["info"].str.replace(r"\S+?\|", "", regex=True)
-
+    .loc[:, 3].tolist())
     return df
 
 # write a function to parse the VEP CSQ VCF header
