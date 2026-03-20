@@ -1,4 +1,4 @@
-FROM ubuntu:focal-20221130
+FROM ubuntu:22.04
 
 LABEL version="1.0"
 LABEL description="Image with basic bioinformatics tools"
@@ -39,8 +39,8 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     grep \
     evince \
     libnss-sss \
-    default-jdk \
-    default-jre \
+    openjdk-21-jdk \
+    openjdk-21-jre \
     git-lfs \
     smbclient \
     groff \
@@ -64,15 +64,59 @@ RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
 
-# Install conda (mamba version)
-ENV CONDA_DIR /opt/conda
-RUN cd /tmp && mkdir -p $CONDA_DIR && \
-    wget "https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-Linux-x86_64.sh" && \
-    bash Mambaforge-24.3.0-0-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
-    rm -f Mambaforge-24.3.0-0-Linux-x86_64.sh && \
-    $CONDA_DIR/bin/mamba install -y --channel conda-forge --channel bioconda python=3.11 bcftools==1.21 htslib==1.21 samtools==1.21 pandas bedtools=2.31 pybedtools openpyxl scipy cython cyvcf2 pysam statsmodels pyranges bamread pybigwig globus-cli nf-core nextflow==24.04.4 SQLAlchemy biotite pyodbc pybigtools bigtools vcftools sqlalchemy && \
-    $CONDA_DIR/bin/conda clean -y --all && \
-    ln -s /opt/conda/bin/* /usr/local/bin/
+# Install Python 3.11 and pip
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv python3.11-dev python3-pip && \
+    ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
+    ln -sf /usr/bin/pip3 /usr/bin/pip && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1 && \
+    apt-get clean all
+
+# Install the latest Nextflow
+RUN curl -s https://get.nextflow.io | bash && \
+    mv nextflow /usr/local/bin/ && chmod +x /usr/local/bin/nextflow
+
+# Install Python packages via pip (remove bedtools, globus-cli, and nf-core, which are not pip packages)
+RUN python3 -m pip install --upgrade pip && \
+    pip install --no-cache-dir \
+    nf-core pandas pybedtools openpyxl scipy cython cyvcf2 pysam statsmodels pyranges bamread pybigwig SQLAlchemy biotite pyodbc pybigtools bigtools sqlalchemy
+
+# Install globus-cli (official method)
+RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && \
+    pip install --upgrade pip && \
+    pip install --no-cache-dir globus-cli
+
+# Install bedtools from source
+ENV BEDTOOLS_VERSION=2.31.1
+RUN cd /tmp && \
+    wget https://github.com/arq5x/bedtools2/releases/download/v${BEDTOOLS_VERSION}/bedtools-${BEDTOOLS_VERSION}.tar.gz && \
+    tar -xzf bedtools-${BEDTOOLS_VERSION}.tar.gz && \
+    cd bedtools2 && \
+    make && \
+    cp -r bin/* /usr/local/bin/ && \
+    cd /tmp && rm -rf bedtools* 
+
+# Install htslib, samtools, and bcftools from source
+ENV HTSLIB_VERSION=1.21
+ENV SAMTOOLS_VERSION=1.21
+ENV BCFTOOLS_VERSION=1.21
+RUN cd /tmp && \
+    wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 && \
+    tar -xjf htslib-${HTSLIB_VERSION}.tar.bz2 && \
+    cd htslib-${HTSLIB_VERSION} && \
+    ./configure --prefix=/usr/local && make && make install && \
+    cd /tmp && \
+    wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 && \
+    tar -xjf samtools-${SAMTOOLS_VERSION}.tar.bz2 && \
+    cd samtools-${SAMTOOLS_VERSION} && \
+    ./configure --prefix=/usr/local && make && make install && \
+    cd /tmp && \
+    wget https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSION}/bcftools-${BCFTOOLS_VERSION}.tar.bz2 && \
+    tar -xjf bcftools-${BCFTOOLS_VERSION}.tar.bz2 && \
+    cd bcftools-${BCFTOOLS_VERSION} && \
+    ./configure --prefix=/usr/local && make && make install && \
+    rm -rf /tmp/htslib* /tmp/samtools* /tmp/bcftools*
 
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && ./aws/install
