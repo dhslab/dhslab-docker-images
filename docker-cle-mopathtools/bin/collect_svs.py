@@ -185,7 +185,7 @@ def known_sv_genes_tag_to_dataframe(variant, header_description: str) -> pd.Data
 
     return df
 
-def vepGeneEffect(row):
+def get_vep_gene_effect(row):
     exon = row.get("EXON")
     intron = row.get("INTRON")
     dist = row.get("DISTANCE")
@@ -284,86 +284,29 @@ def get_gene_syntax(row, bnd_orientation, chr_l, chr_r, vartype=None):
 
     return genestring, genedetail
 
-def main():
-    parser = argparse.ArgumentParser(description="Collect Structural Variants from an annotated SV vcf file.")
-    parser.add_argument("--sv_vcf", required=True, type=checkfile, help="Annotated SV VCF file (*.sv_annotated.vcf.gz)")
-    parser.add_argument("--sv_targets", required=True, type=checkfile, help="Recurrent SV target list CSV")
-    parser.add_argument("--bed_file", required=True, type=checkfile, help="Mopath formatted bedfile or coverage report")
-    parser.add_argument("--outfile", type=str, help="Output tab-delimited file. If not provided, output is written to stdout.")
-    parser.add_argument("--version", "-v", action="version", version="%(prog)s: " + __version__)
-    args = parser.parse_args()
+def read_targets_bed(bed_file: str) -> pd.DataFrame:
+    """Read a mopath-formatted coverage bed file and expand the pipe-delimited Info column.
 
-    # Load accessory files
-    nonSynon = {
-        "splice_acceptor_variant",
-        "splice_donor_variant",
-        "stop_gained",
-        "frameshift_variant",
-        "stop_lost",
-        "start_lost",
-        "transcript_ablation",
-        "transcript_amplification",
-        "inframe_insertion",
-        "inframe_deletion",
-        "missense_variant",
-        "protein_altering_variant",
-        "feature_truncation",
-        "coding_sequence_variant",
-    }
-
-    recurrentSvs = pd.read_csv(args.sv_targets, sep=",", header=None)
-    swapped = recurrentSvs.copy()
-    swapped.iloc[:, [0, 1]] = swapped.iloc[:, [1, 0]].values
-    recurrentSvs = pd.concat([recurrentSvs, swapped], axis=0, ignore_index=True)
-    recurrentSvs.columns = ["KNOWNSVGENE1", "KNOWNSVGENE2", "KNOWNSVREQUIRESTRAND", "KNOWNSVTYPE"]
-    recurrentSvs = recurrentSvs.where(pd.notna(recurrentSvs), None)
-
-    covDf = pd.read_csv(
-        args.bed_file,
+    Returns a single DataFrame with the original columns (Chromosome, Start, End, Gene, Info)
+    plus the expanded fields: Type, Region, Transcript, Region, cdsStart, cdsEnd, strand.
+    """
+    df = pd.read_csv(
+        bed_file,
         header=None,
         skiprows=1,
         names=["Chromosome", "Start", "End", "Gene", "Info"],
         sep="\t",
     )
-    geneCovDf = covDf[covDf["Info"].str.contains(r"^gene",regex=True)]
-    svCovDf = covDf[covDf["Info"].str.contains(r"^sv",regex=True)]
+    expanded = df["Info"].str.split(r"\|", expand=True)
+    expanded.columns = ["Type", "Region", "Gene", "Transcript", "Region2", "cdsStart", "cdsEnd", "strand"]
+    df = pd.concat([df, expanded.drop(columns=["Gene"])], axis=1)
+    return df[df['Type'].isin(['gene', 'sv'])].drop_duplicates().reset_index(drop=True)
 
-    ids = (
-        geneCovDf["Info"]
-        .str.split(r"\|", expand=True)
-        .loc[:, 3:]
-    )
-    ids.columns = ["Transcript", "Region", "cdsStart", "cdsEnd", "strand"]
-    geneTrx = (
-        pd.concat([geneCovDf, ids], axis=1)
-        .drop_duplicates()
-        .reset_index()
-    )
-    geneTrx = (
-        geneTrx[["Gene", "Transcript", "cdsStart", "cdsEnd", "strand"]]
-                .drop_duplicates()
-                .reset_index(drop=True)
-        )
 
-    ids = (
-        svCovDf["Info"]
-        .str.split(r"\|", expand=True)
-        .loc[:, 3:]
-    )
-    ids.columns = ["Transcript", "Region", "cdsStart", "cdsEnd", "strand"]
-    svTrx = pd.concat([svCovDf, ids], axis=1)[
-        ["Gene", "Transcript", "cdsStart", "cdsEnd", "strand"]
-    ].drop_duplicates()
+def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list,
+                recurrentSvs: pd.DataFrame, nonSynon: set) -> pd.DataFrame:
+    """Process an annotated SV VCF and return a DataFrame of structural variants."""
 
-    knownTrx = pd.concat(
-        [svTrx[["Gene", "Transcript"]], geneTrx[["Gene", "Transcript"]]],
-        axis=0,
-        ignore_index=True,
-    ).drop_duplicates()
-
-    reportableCnvGeneList = geneTrx["Gene"].drop_duplicates().tolist()
-
-    # Initialize dataframe for all SVs
     svs_df_columns = [
         "category", "type", "chrom1", "pos1", "chrom2", "pos2", "length",
         "csyntax", "psyntax", "bands", "known_genes", "known_gene_detail",
@@ -371,9 +314,8 @@ def main():
     ]
     svs = pd.DataFrame(columns=svs_df_columns)
 
-    # Process SVs
     print("Gathering SVs...", file=sys.stderr)
-    svvcf = pysam.VariantFile(args.sv_vcf)
+    svvcf = pysam.VariantFile(sv_vcf)
     csq_header_desc = svvcf.header.info['CSQ'].description if 'CSQ' in svvcf.header.info else ""
     known_sv_genes_header_desc = ""
     if 'KnownSvGenes' in svvcf.header.info:
@@ -455,7 +397,7 @@ def main():
             if not vepCsq.empty:
                 total_genes = f"{len(vepCsq['SYMBOL'].unique())} genes"
                 vepCsq = vepCsq.sort_values(by=["START"], ascending=[True])
-                vepCsq["GeneEffect"] = vepCsq.apply(lambda r: vepGeneEffect(r), axis=1)
+                vepCsq["GeneEffect"] = vepCsq.apply(lambda r: get_vep_gene_effect(r), axis=1)
                 vepCsq["GeneImpact"] = vepCsq["Consequence"].apply(
                     lambda r: int(len(set(r.split("&")) & set(nonSynon)) > 0) if isinstance(r, str) and r else None
                 )
@@ -694,7 +636,7 @@ def main():
             vepCsq1 = pd.concat([vepCsq1, knownSvGene1Df[~knownSvGene1Df['SYMBOL'].isin(vepCsq1['SYMBOL'])]], ignore_index=True)
             vepCsq1 = vepCsq1.where(pd.notna(vepCsq1), None)
 
-            vepCsq1["GeneEffect"] = vepCsq1.apply(lambda r: vepGeneEffect(r), axis=1)
+            vepCsq1["GeneEffect"] = vepCsq1.apply(lambda r: get_vep_gene_effect(r), axis=1)
 
         else:
             vepCsq1 = pd.DataFrame([{}], columns=vepCsq1.columns)
@@ -718,7 +660,7 @@ def main():
             vepCsq2 = pd.concat([vepCsq2, knownSvGene2Df[~knownSvGene2Df['SYMBOL'].isin(vepCsq2['SYMBOL'])]], ignore_index=True)
             vepCsq2 = vepCsq2.where(pd.notna(vepCsq2), None)
 
-            vepCsq2["GeneEffect"] = vepCsq2.apply(lambda r: vepGeneEffect(r), axis=1)
+            vepCsq2["GeneEffect"] = vepCsq2.apply(lambda r: get_vep_gene_effect(r), axis=1)
 
         else:
             vepCsq2 = pd.DataFrame([{}], columns=vepCsq2.columns)
@@ -826,18 +768,324 @@ def main():
 
     # Concatenate only if there are records to add
     if sv_bnd_list:
-        svs = pd.concat([svs.dropna(axis=1, how='all'), pd.DataFrame(sv_bnd_list)], ignore_index=True)
+        return pd.concat([svs.dropna(axis=1, how='all'), pd.DataFrame(sv_bnd_list)], ignore_index=True)[svs_df_columns]
 
-    # Final processing and output
-    svs = svs.sort_values(by=["chrom1", "pos1", "chrom2", "pos2"], key=natsort.natsort_keygen()).reset_index(drop=True)
-    svs['length'] = pd.to_numeric(svs['length'], errors='coerce').astype('Int64')
-    
-    # Use fillna() to fill null length values to "NA" for output
-    if args.outfile:
-        svs.to_csv(args.outfile, sep="\t", index=False, header=True, na_rep="NA")
-        print(f"SV report written to {args.outfile}", file=sys.stderr)
     else:
-        svs.to_csv(sys.stdout, sep="\t", index=False, header=True, na_rep="NA")
+        return pd.DataFrame(columns=svs_df_columns)
+
+
+def collect_cnvs(cnv_vcf: str, knownTrx: pd.DataFrame, sex: str = "female",
+                 cnloh_genes: list = None) -> pd.DataFrame:
+    """Process an annotated CNV VCF and return a DataFrame of copy number variants."""
+
+    svs_df_columns = [
+        "category", "type", "chrom1", "pos1", "chrom2", "pos2", "length",
+        "csyntax", "psyntax", "bands", "known_genes", "known_gene_detail",
+        "total_genes", "filters", "id", "abundance", "info",
+    ]
+
+    print("Gathering CNVs...", file=sys.stderr)
+
+    cnvvcf = pysam.VariantFile(cnv_vcf)
+
+    cnv_list = []
+    CHROMOSOME_NUMBER = 0
+
+    for variant in cnvvcf:
+        vartype = variant.alts
+        if len(vartype) > 1 or vartype[0] == "<LOH>":
+            vartype = "CNLOH"
+        elif vartype[0] == "<DEL>":
+            vartype = "DEL"
+        elif vartype[0] == "<DUP>":
+            vartype = "DUP"
+        else:
+            vartype = "UNKNOWN"
+
+        filter_keys = [k for k in variant.filter.keys() if k != 'PASS']
+        filter = "PASS" if not filter_keys else ";".join(filter_keys)
+
+        chr1 = str(variant.chrom)
+        pos1 = variant.pos
+        pos2 = variant.stop
+
+        chr2 = chr1
+        svlen = pos2 - pos1 + 1
+
+        sample_call = _first_sample_call(variant)
+        cn_val = sample_call.get("CN")
+        copynumber = cn_val[0] if isinstance(cn_val, (tuple, list)) else cn_val
+        normal_copy_number = 2 - (1 if chr1 in ['chrX', 'chrY'] and sex == 'male' else 0)
+
+        # get cytobands (and remove acen string)
+        bands = "None"
+        bandstring = "None"
+        cyto = variant.info.get("Cytobands")
+        if cyto is not None:
+            if isinstance(cyto, str):
+                bands = cyto.split(",")
+            else:
+                bands = list(cyto)
+            bandstring = bands[0].replace("acen_", "")
+            if len(bands) > 1:
+                bandstring = bands[0].replace("acen_", "") + bands[-1].replace("acen_", "")
+
+        # gene by overlap between variant and genes covDf. This is all we need for this resolution.
+        genestring = "None"
+        genes = "None"
+        known_genes = "None"
+        total_genes = "None"
+        vepgenes = variant.info.get("VEPGENES")
+        if vepgenes is not None and isinstance(vepgenes, str):
+            genes = list(
+                set([item for item in vepgenes.split(",") if item != ""])
+            )
+            known_genes = list(set(knownTrx["Gene"].unique().tolist()) & set(genes))
+            if len(known_genes) > 10:
+                genestring = f"{len(known_genes)} genes"
+            elif len(known_genes) > 0:
+                genestring = ",".join(known_genes)
+            else:
+                genestring = "None"
+
+            if len(genes) > 1:
+                total_genes = str(len(genes)) + " genes"
+            else:
+                total_genes = "1 gene"
+
+        csyntax = "."
+        psyntax = "."
+        if vartype == "DEL":
+            csyntax = chr1 + ":g." + str(pos1) + "_" + str(pos2) + "del"
+            if (
+                bands[0].find("p") > -1 and bands[-1].find("q") > -1
+            ):  # if the CNA spans the centromere then the whole chromosome is lost/gained
+                if filter == "PASS":
+                    CHROMOSOME_NUMBER = CHROMOSOME_NUMBER + (copynumber - normal_copy_number)
+
+                psyntax = "seq[GRCh38] -" + chr1.replace("chr", "")
+                bandstring = "-" + chr1.replace("chr", "")
+
+            elif any("q11" in b for b in bands) and any("qter" in b for b in bands) and chr1 in ACROCENTRICS:
+                if filter == "PASS":
+                    CHROMOSOME_NUMBER = CHROMOSOME_NUMBER + (copynumber - normal_copy_number)
+
+                psyntax = "seq[GRCh38] -" + chr1.replace("chr", "")
+                bandstring = "-" + chr1.replace("chr", "")
+
+            else:
+                # remove string "acen_" from bands
+                bands = [b.replace("acen_", "") for b in bands]
+                if bands[0].find("p") > -1:
+                    psyntax = (
+                        "seq[GRCh38] del("
+                        + chr1.replace("chr", "")
+                        + ")("
+                        + bands[0]
+                        + bands[-1]
+                        + ")"
+                    )
+
+                else:
+                    psyntax = (
+                        "seq[GRCh38] del("
+                        + chr1.replace("chr", "")
+                        + ")("
+                        + bands[0]
+                        + bands[-1]
+                        + ")"
+                    )
+
+        elif vartype == "DUP":
+            csyntax = chr1 + ":g." + str(pos1) + "_" + str(pos2) + "dup"
+            if bands[0].find("p") > -1 and bands[-1].find("q") > -1:
+                if filter == "PASS":
+                    CHROMOSOME_NUMBER = CHROMOSOME_NUMBER + (copynumber - normal_copy_number)
+
+                psyntax = "seq[GRCh38] +" + chr1.replace("chr", "")
+                bandstring = "+" + chr1.replace("chr", "")
+
+            elif any("q11" in b for b in bands) and any("qter" in b for b in bands) and chr1 in ACROCENTRICS:
+                if filter == "PASS":
+                    CHROMOSOME_NUMBER = CHROMOSOME_NUMBER + (copynumber - normal_copy_number)
+
+                psyntax = "seq[GRCh38] +" + chr1.replace("chr", "")
+                bandstring = "+" + chr1.replace("chr", "")
+
+            else:
+                bands = [b.replace("acen_", "") for b in bands]
+                if bands[0].find("p") > -1:
+                    psyntax = (
+                        "seq[GRCh38] dup("
+                        + chr1.replace("chr", "")
+                        + ")("
+                        + bands[0]
+                        + bands[-1]
+                        + ")"
+                    )
+
+                else:
+                    psyntax = (
+                        "seq[GRCh38] dup("
+                        + chr1.replace("chr", "")
+                        + ")("
+                        + bands[0]
+                        + bands[-1]
+                        + ")"
+                    )
+
+        elif vartype == "CNLOH":
+            csyntax = chr1 + ":g." + str(pos1) + "_" + str(pos2) + "cnLOH"
+            if bands[0].find("p") > -1 and bands[-1].find("q") > -1:
+                psyntax = "seq[GRCh38] cnLOH(" + chr1.replace("chr", "") + ")"
+                bandstring = "cnLOH(" + chr1.replace("chr", "") + ")"
+
+            elif any("q11" in b for b in bands) and any("qter" in b for b in bands) and chr1 in ACROCENTRICS:
+                psyntax = "seq[GRCh38] cnLOH(" + chr1.replace("chr", "") + ")"
+                bandstring = "cnLOH(" + chr1.replace("chr", "") + ")"
+
+            else:
+                bands = [b.replace("acen_", "") for b in bands]
+                if bands[0].find("p") > -1:
+                    psyntax = (
+                        "seq[GRCh38] cnLOH("
+                        + chr1.replace("chr", "")
+                        + ")("
+                        + bands[0]
+                        + bands[-1]
+                        + ")"
+                    )
+
+                else:
+                    psyntax = (
+                        "seq[GRCh38] cnLOH("
+                        + chr1.replace("chr", "")
+                        + ")("
+                        + bands[0]
+                        + bands[-1]
+                        + ")"
+                    )
+
+        # abundance
+        cf_val = sample_call.get("CF")
+        cf_float = cf_val[0] if isinstance(cf_val, (tuple, list)) else cf_val
+        if cf_float is None or np.isnan(float(cf_float)):
+            abundance = 0.0
+        else:
+            abundance = round(float(cf_float), 1)
+
+        category = None
+        # final filtering step. Skip CNVs if there are no known genes
+        # and there are filters other than "PASS", "MinCNVAbundance", "MinCNVSize", or "segmentMean"
+        if genestring == "None" and not (
+            filter == "PASS"
+            or filter == "MinCNVAbundance"
+            or filter == "MinCNVSize"
+            or filter == "segmentMean"
+        ):
+            continue
+
+        elif filter == "PASS":
+            category = "CNV"
+
+        else:
+            category = "OTHERSV"
+
+        # if vartype is CNLOH and none of the known_genes are in cnloh_genes then assign to OTHERSV
+        if (
+            vartype == "CNLOH"
+            and cnloh_genes is not None
+            and len(set(known_genes) & set(cnloh_genes)) == 0
+        ):
+            category = "OTHERSV"
+
+        # Set svlen NA to None for output of null to conform to spec
+        if svlen == "N/A":
+            svlen = None
+
+        cnv_list.append(dict(zip(svs_df_columns, [
+            category,
+            vartype,
+            chr1,
+            int(pos1),
+            chr1,
+            int(pos2),
+            svlen,
+            csyntax,
+            psyntax,
+            bandstring,
+            genestring,
+            genestring,
+            total_genes,
+            filter,
+            str(variant.id),
+            abundance,
+            "CN=" + str(copynumber),
+        ])))
+
+    if not cnv_list:
+        return pd.DataFrame(columns=svs_df_columns)
+
+    return pd.DataFrame(cnv_list)[svs_df_columns]
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Collect Structural and Copy Number Variants from an annotated VCF file.")
+    parser.add_argument("--sv-vcf", required=False, default=None, type=checkfile, help="Annotated SV VCF file (*.sv_annotated.vcf.gz)")
+    parser.add_argument("--cnv-vcf", required=False, default=None, type=checkfile, help="Annotated CNV VCF file (*.cnv_annotated.vcf.gz)")
+    parser.add_argument("--sv-targets", required=True, type=checkfile, help="Recurrent SV target list CSV")
+    parser.add_argument("--bed-file", required=True, type=checkfile, help="Mopath formatted bedfile or coverage report")
+    parser.add_argument("--sex", required=False, default="female", choices=["male", "female"], help="Sample sex for copy number calculation (default: female)")
+    parser.add_argument("--outfile", type=str, help="Output tab-delimited file. If not provided, output is written to stdout.")
+    parser.add_argument("--version", "-v", action="version", version="%(prog)s: " + __version__)
+    args = parser.parse_args()
+
+    nonSynon = {
+        "splice_acceptor_variant",
+        "splice_donor_variant",
+        "stop_gained",
+        "frameshift_variant",
+        "stop_lost",
+        "start_lost",
+        "transcript_ablation",
+        "transcript_amplification",
+        "inframe_insertion",
+        "inframe_deletion",
+        "missense_variant",
+        "protein_altering_variant",
+        "feature_truncation",
+        "coding_sequence_variant",
+    }
+
+    # Import recurrent SV list and create a symmetric list for matching regardless of gene order
+    recurrentSvs = pd.read_csv(args.sv_targets, sep=",", header=None)
+    swapped = recurrentSvs.copy()
+    swapped.iloc[:, [0, 1]] = swapped.iloc[:, [1, 0]].values
+    recurrentSvs = pd.concat([recurrentSvs, swapped], axis=0, ignore_index=True)
+    recurrentSvs.columns = ["KNOWNSVGENE1", "KNOWNSVGENE2", "KNOWNSVREQUIRESTRAND", "KNOWNSVTYPE"]
+    recurrentSvs = recurrentSvs.where(pd.notna(recurrentSvs), None)
+
+    # Import target gene list
+    targetDf = read_targets_bed(args.bed_file)
+    knownTrx = targetDf[["Gene", "Transcript"]].drop_duplicates().reset_index(drop=True)
+    reportableCnvGeneList = targetDf[targetDf["Type"] == "gene"]["Gene"].drop_duplicates().tolist()
+
+    results = []
+    if args.sv_vcf:
+        results.append(collect_svs(args.sv_vcf, knownTrx, reportableCnvGeneList, recurrentSvs, nonSynon))
+    if args.cnv_vcf:
+        results.append(collect_cnvs(args.cnv_vcf, knownTrx, sex=args.sex))
+
+    if results:
+        out = pd.concat(results, ignore_index=True) if len(results) > 1 else results[0]
+        out = out.sort_values(by=["chrom1", "pos1", "chrom2", "pos2"], key=natsort.natsort_keygen()).reset_index(drop=True)
+        out['length'] = pd.to_numeric(out['length'], errors='coerce').astype('Int64')
+        if args.outfile:
+            out.to_csv(args.outfile, sep="\t", index=False, header=True, na_rep="NA")
+            print(f"Report written to {args.outfile}", file=sys.stderr)
+        else:
+            out.to_csv(sys.stdout, sep="\t", index=False, header=True, na_rep="NA")
+
 
 if __name__ == "__main__":
     main()
