@@ -698,11 +698,12 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                 (bnd_annot['KNOWNSVTYPE'].isna() | (bnd_annot['KNOWNSVTYPE'] == vartype)))
         bnd_annot['RecurrentSV'] = np.where(mask, 1, 0)
         
-        # exclude pairs where neither annotation is protein coding
+        # exclude pairs in the same gene and region unless its a known gene
         bnd_annot = bnd_annot[(bnd_annot['KnownGene_l'] == 1) |
                                 (bnd_annot['KnownGene_r'] == 1) |
-                                ((bnd_annot['SYMBOL_l'] != bnd_annot['SYMBOL_r']) & 
-                                ((bnd_annot['BIOTYPE_l']=='protein_coding') | (bnd_annot['BIOTYPE_r']=='protein_coding')))]
+                                (~((bnd_annot['SYMBOL_l'] == bnd_annot['SYMBOL_r']) & 
+                                   (bnd_annot['EXON_l'] == bnd_annot['EXON_r']) & 
+                                   (bnd_annot['INTRON_l'] == bnd_annot['INTRON_r'])))]
 
         if not bnd_annot.empty:
             bnd_annot['EXON_l'] = bnd_annot.apply(lambda r: _tail_or_none(r['EXON_l']) if r['SYMBOL_l']!='INTERGENIC' else None,axis=1)

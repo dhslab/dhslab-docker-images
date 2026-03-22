@@ -18,8 +18,8 @@ RUN apt-get update -y && \
     wget \
     tzdata \
     openssh-client \
-    less \
     grep \
+    less \
     samtools \
     bcftools \
     bedtools \
