@@ -172,14 +172,15 @@ def merge_records(df, overlap=0, size_filter=2000000):
                     }
 
             # make svtype LOSS, GAIN, or CNLOH based on the ALT field
-            if "<DEL>" in to_merge["ALT"].tolist()[0]:
+            if to_merge["ALT"].tolist()[0] == "<DEL>":
                 merged["ID"] = f"DRAGEN:LOSS:{merged['Chromosome']}:{merged['Start']}-{merged['End']}"
-            elif "<DUP>" in to_merge["ALT"].tolist()[0]:
+            elif to_merge["ALT"].tolist()[0] == "<DUP>":
                 merged["ID"] = f"DRAGEN:GAIN:{merged['Chromosome']}:{merged['Start']}-{merged['End']}"
-            elif ("<DEL>,<DUP>" in to_merge["ALT"].tolist()[0] or "<LOH>" in to_merge["ALT"].tolist()[0]) and "CNLOH" in to_merge["ID"].tolist()[0]:
-                merged["ID"] = f"DRAGEN:CNLOH:{merged['Chromosome']}:{merged['Start']}-{merged['End']}"
-            elif ("<DEL>,<DUP>" in to_merge["ALT"].tolist()[0] or "<LOH>" in to_merge["ALT"].tolist()[0]) and "GAINLOH" in to_merge["ID"].tolist()[0]:
-                merged["ID"] = f"DRAGEN:GAINLOH:{merged['Chromosome']}:{merged['Start']}-{merged['End']}"
+            elif (to_merge["ALT"].tolist()[0] == "<DEL>,<DUP>" or to_merge["ALT"].tolist()[0] == "<LOH>"):
+                if "CNLOH" in to_merge["ID"].tolist()[0]:
+                    merged["ID"] = f"DRAGEN:CNLOH:{merged['Chromosome']}:{merged['Start']}-{merged['End']}"
+                elif "GAINLOH" in to_merge["ID"].tolist()[0]:
+                    merged["ID"] = f"DRAGEN:GAINLOH:{merged['Chromosome']}:{merged['Start']}-{merged['End']}"
 
             merged["REF"] = "N"
             merged["ALT"] = to_merge["ALT"].tolist()[0]
