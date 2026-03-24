@@ -134,7 +134,7 @@ def vcf_to_pyranges(vcf_file):
 
 def merge_records(df, overlap=0, size_filter=2000000):
     if df is None or df.empty:
-        return pd.DataFrame(columns=df.columns)
+        return pd.DataFrame()
 
     if "Cluster" in df.columns:
         df = df.drop(columns="Cluster")
@@ -148,7 +148,7 @@ def merge_records(df, overlap=0, size_filter=2000000):
     if (df.End.max() - df.Start.min()) < size_filter or len(
         df[df["FILTER"].isin(["PASS","segmentMean"])]
     ) == 0:
-        return pd.DataFrame(columns=df.columns)
+        return pd.DataFrame()
 
     elif df.shape[0] == 1:
         unmergedDf = df.copy()
@@ -211,6 +211,7 @@ def merge_records(df, overlap=0, size_filter=2000000):
                 merged["ALT"] == "<DEL>"
                 or merged["ALT"] == "<DEL>,<DUP>"
                 or merged["ALT"] == "<DUP>,<DEL>"
+                or merged["ALT"] == "<LOH>"
             ):
                 info_dict["REFLEN"] = info_dict["SVLEN"]
             else:
@@ -221,6 +222,7 @@ def merge_records(df, overlap=0, size_filter=2000000):
 
             # Define your aggregation functions for each column
             aggregations = {
+                "GT": lambda x: x.iloc[0],  # Take the first GT (or you could define a more complex logic here)
                 "CN": "mean",
                 "AS": "sum",  # Summing 'AS'
                 "BC": "sum",  # Summing 'BC'
@@ -235,7 +237,6 @@ def merge_records(df, overlap=0, size_filter=2000000):
                 "SM": "mean",
                 "MAF": "mean",
             }
-            
 
             if "PE" in formatDf.columns:
                 formatDf[["PE1", "PE2"]] = pd.DataFrame(
@@ -254,18 +255,21 @@ def merge_records(df, overlap=0, size_filter=2000000):
 
             formatDf["PE"] = (formatDf["PE1"], formatDf["PE2"])
             format_dict = formatDf.drop(["PE1", "PE2"], axis=0).to_dict()
-            format_dict["GT"] = (0, 1)
 
             mergedDf = pd.DataFrame([merged])
             mergedDf["INFO"] = [info_dict]
             mergedDf["FORMAT"] = [format_dict]
 
     # rescale Dragen's MAF to a AF for the unmerged records
-    for rec in unmergedDf.to_dict(orient="records"):
-        dfs_to_merge = [df for df in [mergedDf, pd.DataFrame([rec])] if not df.empty]
-        mergedDf = pd.concat(dfs_to_merge, axis=0)
-
-    return mergedDf
+    if not unmergedDf.empty:
+        for rec in unmergedDf.to_dict(orient="records"):
+            dfs_to_merge = [df.dropna(axis=1, how='all') for df in [mergedDf, pd.DataFrame([rec])] if not df.empty]
+            mergedDf = pd.concat(dfs_to_merge, axis=0)
+        
+    if not mergedDf.empty:
+        return mergedDf
+    else:
+        return pd.DataFrame()
 
 
 def main():
@@ -483,13 +487,17 @@ def main():
 
         for k in inVcf.header.formats.keys():
             if k in item["FORMAT"] and not pd.isna(item["FORMAT"][k]):
-                if (
-                    inVcf.header.formats.get(k).type == "Integer"
-                    and inVcf.header.formats.get(k).number == 1
-                ):
-                    nrec.samples[0][k] = int(item["FORMAT"][k])
+                fmt = inVcf.header.formats.get(k)
+                val = item["FORMAT"][k]
+
+                if fmt.type == "Integer":
+                    if fmt.number == 1:
+                        nrec.samples[0][k] = int(val)
+                    else:
+                        # Cast each element to native Python int
+                        nrec.samples[0][k] = tuple(int(v) for v in val)
                 else:
-                    nrec.samples[0][k] = item["FORMAT"][k]
+                    nrec.samples[0][k] = val
             else:
                 nrec.samples[0][k] = tuple(
                     itertools.repeat(None, inVcf.header.formats.get(k).number)
