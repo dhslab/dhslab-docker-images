@@ -220,9 +220,13 @@ def main():
         PR = (0, 0)
         SR = (0, 0)
         if "PR" in record.format.keys():
+            if "DUX" in record.id:
+                record.samples[0]["PR"] = (0, record.samples[0]["PR"][1])
             PR = record.samples[0]["PR"]
 
         if "SR" in record.format.keys():
+            if "DUX" in record.id:
+                record.samples[0]["SR"] = (0, record.samples[0]["SR"][1])
             SR = record.samples[0]["SR"]
 
         # Hard filter for SVs with no read support or that fail hard filter rules.

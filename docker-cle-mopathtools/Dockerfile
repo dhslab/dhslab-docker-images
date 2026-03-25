@@ -14,8 +14,8 @@ RUN apt-get update -y && \
     procps \
     ca-certificates \
     curl \
-    wget \
     gawk \
+    wget \
     tzdata \
     openssh-client \
     less \
