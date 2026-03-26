@@ -397,8 +397,8 @@ def main():
     # merge nearby/overlapping CNVs with similar event
     if not mergedCnvDf.empty:
         mergedCnvDf = mergedCnvDf.groupby('Cluster',group_keys=False).apply(lambda x: merge_records(x,overlap=0,size_filter=args.min_hard_filter_size),include_groups=False)
-        # remove entries with no FILTER field
-        mergedCnvDf = mergedCnvDf[mergedCnvDf['FILTER'].notna()]
+        if not mergedCnvDf.empty:
+            mergedCnvDf = mergedCnvDf[mergedCnvDf['FILTER'].notna()]
 
     # remove CNVs that just involve the centromeres
     if not mergedCnvDf.empty:
