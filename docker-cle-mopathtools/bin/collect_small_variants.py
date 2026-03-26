@@ -766,13 +766,11 @@ def main():
         else:
             print(variants.to_csv(sep="\t", index=False))
     else:
-        print("No variants found that meet criteria.", file=sys.stderr)
-
-    
-
-
-
-
+        # create an empty file with headers if no variants meet criteria
+        if args.outfile:
+            pd.DataFrame(columns=variants.columns).to_csv(args.outfile, sep="\t", index=False)
+        else:
+            pd.DataFrame(columns=variants.columns).to_csv(sep="\t", index=False)
 
 if __name__ == "__main__":
     main()

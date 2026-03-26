@@ -13,8 +13,8 @@ RUN apt-get update -y && \
     bzip2 \
     procps \
     ca-certificates \
-    curl \
     wget \
+    curl \
     gawk \
     tzdata \
     openssh-client \
