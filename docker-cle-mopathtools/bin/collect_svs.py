@@ -1081,11 +1081,19 @@ def main():
         out = pd.concat(results, ignore_index=True) if len(results) > 1 else results[0]
         out = out.sort_values(by=["chrom1", "pos1", "chrom2", "pos2"], key=natsort.natsort_keygen()).reset_index(drop=True)
         out['length'] = pd.to_numeric(out['length'], errors='coerce').astype('Int64')
-        if args.outfile:
-            out.to_csv(args.outfile, sep="\t", index=False, header=True, na_rep="NA")
-            print(f"Report written to {args.outfile}", file=sys.stderr)
-        else:
-            out.to_csv(sys.stdout, sep="\t", index=False, header=True, na_rep="NA")
+
+    else:
+        out = pd.DataFrame(columns=[
+            "category", "type", "chrom1", "pos1", "chrom2", "pos2", "length",
+            "csyntax", "psyntax", "bands", "known_genes", "known_gene_detail",
+            "total_genes", "filters", "id", "abundance", "info",
+        ])
+
+    if args.outfile:
+        out.to_csv(args.outfile, sep="\t", index=False, header=True, na_rep="NA")
+        print(f"Report written to {args.outfile}", file=sys.stderr)
+    else:
+        out.to_csv(sys.stdout, sep="\t", index=False, header=True, na_rep="NA")
 
 
 if __name__ == "__main__":
