@@ -298,8 +298,8 @@ def read_targets_bed(bed_file: str) -> pd.DataFrame:
         sep="\t",
     )
     expanded = df["Info"].str.split(r"\|", expand=True)
-    expanded.columns = ["Type", "Region", "Gene", "Transcript", "Region2", "cdsStart", "cdsEnd", "strand"]
-    df = pd.concat([df, expanded.drop(columns=["Gene"])], axis=1)
+    expanded.columns = ["Type", "Region", "GeneName", "GeneId", "Transcript", "cdsStart", "cdsEnd", "strand"]
+    df = pd.concat([df, expanded.drop(columns=["GeneName", "GeneId"])], axis=1)
     return df[df['Type'].isin(['gene', 'sv'])].drop_duplicates().reset_index(drop=True)
 
 
@@ -424,7 +424,7 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                 elif bands:
                     psyntax = ("seq[GRCh38] " + vartype.lower() + "(" + chr1.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
 
-            knownGeneDf = vepCsq[(vepCsq["KnownTrx"] == 1) & (vepCsq["DISTANCE"] == 0)].sort_values(by=["START"])[["SYMBOL", "GeneImpact", "GeneEffect"]]
+            knownGeneDf = vepCsq[(vepCsq["KnownTrx"] == 1)].sort_values(by=["START"])[["SYMBOL", "GeneImpact", "GeneEffect"]]
             
             if len(knownGeneDf) > 15:
                 genestring = f"{len(knownGeneDf)} genes"
