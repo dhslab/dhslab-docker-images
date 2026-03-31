@@ -271,8 +271,6 @@ def main():
         if recordVariant:
             passingRecords.add(record.id)
 
-            record.filter.clear()
-
             # apply filters
             if "IMPRECISE" in record.info.keys():
                 record.filter.add("Imprecise")            
@@ -287,9 +285,6 @@ def main():
                 args.min_abundance
             ):
                 record.filter.add("MinSvAbundance")
-
-            if len(record.filter.keys()) == 0:
-                record.filter.add("PASS")
 
             # Fix BND records
             if record.info.get("SVTYPE") == "BND":
