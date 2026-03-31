@@ -206,7 +206,7 @@ def main():
             genes = list(
                 set(
                     (parseVepCsq(csq, list(vep.keys()), "SYMBOL", None) if (csq := record.info.get("CSQ")) else []) +
-                    ([gene.split("|")[0] for gene in list(ksg)] if (ksg := record.info.get("KnownSvGenes")) else [])
+                    ([gene.split("|")[2] for gene in list(ksg)] if (ksg := record.info.get("KnownSvGenes")) else [])
                 )
             )
             consequences = "&".join(
@@ -310,7 +310,7 @@ def main():
                     record.filter.clear()
                     record.filter.add("PASS")
                     if record.info.get("KnownSvGenes") is None:
-                        record.info['KnownSvGenes'] = 'DUX4|DUX4|DUX4|transcript|||'
+                        record.info['KnownSvGenes'] = 'sv|transcript_region|DUX4|ENSG00000260596|ENST00000565211|190173774|190175048|1'
 
             vcf_out.write(record)
 
