@@ -230,7 +230,7 @@ def main():
             SR = record.samples[0]["SR"]
 
         # Hard filter for SVs with no read support or that fail hard filter rules.
-        if (PR[1] == 0 and SR[1] == 0) or PR[1] <= min_pr_reads_hard or SR[1] <= min_sr_reads_hard:
+        if (PR[1] == 0 and SR[1] == 0) or PR[1] < min_pr_reads_hard or SR[1] < min_sr_reads_hard:
             continue
 
         # also skip DEL/DUP calls with the SystematicNoise filter set
