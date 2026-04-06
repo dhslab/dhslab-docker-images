@@ -146,6 +146,7 @@ def main():
     # get transcripts
     gene_info_df = get_bed_transcripts(args.bed_file)
     knownGenes = set(gene_info_df['gene'].tolist())
+    dux4_info = gene_info_df.loc[gene_info_df['gene']=="DUX4",'info'].tolist()[0]
 
     # tracker for variants to print
     passingRecords = set()
@@ -183,10 +184,10 @@ def main():
             f"Fails minimum SV abundance (${args.min_abundance})",
         )
 
-    header = vcf_in.header.copy()
-    vcf_out = pysam.VariantFile(outfile, "w", header=header)
+    vcf_records = []
 
     for record in vcf_in:
+
         svtype = record.info.get("SVTYPE")
 
         svlen = None
@@ -229,12 +230,54 @@ def main():
                 record.samples[0]["SR"] = (0, record.samples[0]["SR"][1])
             SR = record.samples[0]["SR"]
 
+        # apply filters
+        if "IMPRECISE" in record.info.keys():
+            record.filter.add("Imprecise")            
+
+        if PR[1] < int(min_pr_reads_soft) or SR[1] < int(min_sr_reads_soft):
+            record.filter.add("MinSvReads")
+
+        if record.info.get("SvInsertionHits") is not None:
+            record.filter.add("SvInsertion")
+
+        if PR[0] + SR[0] > 0:
+            if (PR[1] + SR[1]) / (PR[0] + SR[0] + PR[1] + SR[1]) * 100.0 < float(
+                args.min_abundance
+            ):
+                record.filter.add("MinSvAbundance")
+
+        # Fix BND records
+        if record.info.get("SVTYPE") == "BND":
+            chr1 = record.contig
+            if record.alts[0].startswith("["):
+                chr2, pos2 = record.alts[0].split("[")[1].split(":")
+                if chr1 == chr2:
+                    record.info["SVTYPE"] = "INV"
+
+            if record.alts[0].endswith("]"):
+                chr2, pos2 = record.alts[0].split("]")[1].split(":")
+                if chr1 == chr2:
+                    record.info["SVTYPE"] = "INV"
+
+            # if DUX4 call, then adjust the VCF records accordingly.
+            if 'DUX4' in record.id:
+                # change filter to PASS
+                record.filter.clear()
+                record.filter.add("PASS")
+                if record.info.get("KnownSvGenes") is None:
+                    record.info['KnownSvGenes'] = dux4_info
+
+        # store all records for writing to output VCF
+        vcf_records.append(record)
+
+        #
+        # Hard filter records
+        #
         # Hard filter for SVs with no read support or that fail hard filter rules.
         if (PR[1] == 0 and SR[1] == 0) or PR[1] < min_pr_reads_hard or SR[1] < min_sr_reads_hard:
             continue
 
-        # also skip DEL/DUP calls with the SystematicNoise filter set
-        # that have either 0 SR or PR reads or that cross the centromere. 
+        # Skip DEL/DUP with either 0 SR or PR reads or that cross the centromere. 
         if (svtype in ["DEL", "DUP"] 
             and (
                 (PR[1] == 0 or SR[1] == 0)
@@ -244,69 +287,35 @@ def main():
             )
         ):
             continue
-
-        geneHits = set(genes) & knownGenes
     
-        recordVariant = False
-        # get BND records that overlap a known gene or that PASS
-        if (svtype == "BND" 
-            and ((len(geneHits) > 0 or record.info.get("MATEID")[0] in passingRecords)
-                 or ('PASS' in record.filter.keys()
-                        and len(set(consequences) & nonSynon) > 0
-                        and record.info.get("CONTIG") is not None)
-                or 'DUX4' in record.id)
-            ):
-                recordVariant = True
+        knownGeneHits = set(genes) & knownGenes
 
-        # INS/DEL/DUP must pass length filters and affect a known gene
-        elif (svtype in ["INS", "DEL", "DUP"] 
-              and svlen is not None
-              and svlen >= args.min_length 
-              and svlen < args.max_length                  
-              and len(geneHits) > 0
-              and len(set(consequences) & nonSynon) > 0
-            ):
-                recordVariant = True        
+        # Skip non-DUX4 caller BND records where either it or its mate doesnt involve a known gene
+        # and either there is no contig or a non-PASS variant doesnt involve a gene.
+        # Also skip DEL/INS/DUP calls outside the specified size range or without a non-synonymous consequence.
+        if ((svtype == "BND" and 'DUX4' not in record.id and record.info.get("MATEID")[0] not in passingRecords and len(knownGeneHits) == 0 and
+            (record.info.get("CONTIG") is None or ('PASS' not in record.filter.keys() and len(genes) == 0)))
 
-        if recordVariant:
-            passingRecords.add(record.id)
+            or
+            
+            (svtype in ["INS", "DEL", "DUP"] and 
+                ((svlen is None or (svlen < args.min_length or svlen > args.max_length)) or 
+                 (len(genes) == 0 or len(set(consequences) & nonSynon) == 0)
+        ))):
+            continue
 
-            # apply filters
-            if "IMPRECISE" in record.info.keys():
-                record.filter.add("Imprecise")            
+        # add to list of passing records
+        passingRecords.add(record.id)
 
-            if PR[1] < int(min_pr_reads_soft) or SR[1] < int(min_sr_reads_soft):
-                record.filter.add("MinSvReads")
+    # end loop
 
-            if record.info.get("SvInsertionHits") is not None:
-                record.filter.add("SvInsertion")
+    header = vcf_in.header.copy()
+    # write passing records (and their mates) to output VCF
+    vcf_out = pysam.VariantFile(outfile, "w", header=header)
 
-            if (PR[1] + SR[1]) / (PR[0] + SR[0] + PR[1] + SR[1]) * 100.0 < float(
-                args.min_abundance
-            ):
-                record.filter.add("MinSvAbundance")
-
-            # Fix BND records
-            if record.info.get("SVTYPE") == "BND":
-                chr1 = record.contig
-                if record.alts[0].startswith("["):
-                    chr2, pos2 = record.alts[0].split("[")[1].split(":")
-                    if chr1 == chr2:
-                        record.info["SVTYPE"] = "INV"
-
-                if record.alts[0].endswith("]"):
-                    chr2, pos2 = record.alts[0].split("]")[1].split(":")
-                    if chr1 == chr2:
-                        record.info["SVTYPE"] = "INV"
-
-                # if DUX4 call, then adjust the VCF records accordingly.
-                if 'DUX4' in record.id:
-                    # change filter to PASS
-                    record.filter.clear()
-                    record.filter.add("PASS")
-                    if record.info.get("KnownSvGenes") is None:
-                        record.info['KnownSvGenes'] = 'sv|transcript_region|DUX4|ENSG00000260596|ENST00000565211|190173774|190175048|1'
-
+    for record in vcf_records:
+        # print record if either its id or its mate's is in passingRecords
+        if record.id in passingRecords or (record.info.get("MATEID") is not None and record.info.get("MATEID")[0] in passingRecords):
             vcf_out.write(record)
 
     vcf_in.close()

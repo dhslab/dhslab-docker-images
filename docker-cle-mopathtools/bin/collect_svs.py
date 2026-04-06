@@ -11,6 +11,8 @@ import pandas as pd
 import pysam
 import natsort
 
+# /scratch1/fs1/dspencer/dhs/nfwork/94/79ef148056ad25827241ad641b5f13
+
 __version__ = "1.0.0"
 
 ACROCENTRICS = ["chr13", "chr14", "chr15", "chr21", "chr22"]
@@ -213,8 +215,7 @@ def _first_sample_call(variant):
         return sample
     return {}
 
-
-def get_gene_syntax(row, bnd_orientation, chr_l, chr_r, vartype=None):
+def get_gene_syntax(row, chr_l, chr_r, vartype=None):
     """Calculates gene-based syntax (genestring and genedetail) for a BND annotation row."""
     gene_l = row.get("SYMBOL_l") or "INTERGENIC"
     region_l = "" if gene_l == "INTERGENIC" else f"({row.get('Feature_l')}:{row.get('GeneEffect_l')})"
@@ -228,7 +229,7 @@ def get_gene_syntax(row, bnd_orientation, chr_l, chr_r, vartype=None):
     inframe_splice = row.get("InframeSplice", 0)
 
     # Calculate fusion orientation: 1 is same strand and -1 is opposite.
-    fusion_orientation = strand_l * strand_r * bnd_orientation
+    fusion_orientation = row.get('FUSION_ORIENTATION', 0)
 
     chr_l_num_str = chr_l.replace('chr', '').replace('X', '23').replace('Y', '24').replace('M', '25')
     chr_r_num_str = chr_r.replace('chr', '').replace('X', '23').replace('Y', '24').replace('M', '25')
@@ -302,6 +303,33 @@ def read_targets_bed(bed_file: str) -> pd.DataFrame:
     df = pd.concat([df, expanded.drop(columns=["GeneName", "GeneId"])], axis=1)
     return df[df['Type'].isin(['gene', 'sv'])].drop_duplicates().reset_index(drop=True)
 
+def match_to_recurrentsvs(row, svtype, recurrentSvDf):
+    recurrentSvDf['RecurrentSV'] = 1
+    # fill recurrentSvDf 'KNOWNSVTYPE' with BND if its None
+    mask = (
+        (
+            (recurrentSvDf['KNOWNSVGENE1'] == row['SYMBOL_l']) & 
+            (recurrentSvDf['KNOWNSVTYPE'].isin([svtype,'*'])) & 
+            ((recurrentSvDf['KNOWNSVGENE2'].isin([row['SYMBOL_r'],'*'])) & 
+             ((recurrentSvDf['KNOWNSVREQUIRESTRAND'] == 0) | 
+              ((recurrentSvDf['KNOWNSVREQUIRESTRAND'] == 1) & (row['FUSION_ORIENTATION'] == 1))))
+        ) | 
+        (
+            (recurrentSvDf['KNOWNSVGENE1'] == row['SYMBOL_r']) &
+            (recurrentSvDf['KNOWNSVTYPE'] == svtype) &
+            ((recurrentSvDf['KNOWNSVGENE2'].isin([row['SYMBOL_l'],'*'])) &
+             ((recurrentSvDf['KNOWNSVREQUIRESTRAND'] == 0) | ((recurrentSvDf['KNOWNSVREQUIRESTRAND'] == 1) & (row['FUSION_ORIENTATION'] == 1))))
+        )
+    )
+    hits = recurrentSvDf[mask]
+    exact = hits[(hits['KNOWNSVGENE2'] != '*') & (hits['KNOWNSVGENE1'] != '*')]
+    if len(exact) > 0:
+        return exact.iloc[0]
+    elif len(hits) > 0:
+        return hits.iloc[0]
+    else:
+        # Return a Series of NAs with the same columns as recurrentSvDf
+        return pd.Series({col: None for col in recurrentSvDf.columns})
 
 def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list,
                 recurrentSvs: pd.DataFrame, nonSynon: set) -> pd.DataFrame:
@@ -333,9 +361,6 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
             # Hard filter DEL/DUPs that do not involve genes
             if "KnownSvGenes" not in variant.info and "CSQ" not in variant.info:
                 continue
-
-            filter_keys = list(variant.filter.keys())
-            filter = "PASS" if not filter_keys else ";".join(filter_keys)
 
             vartype = variant.info.get("SVTYPE")
             chr1 = str(variant.chrom)
@@ -424,6 +449,7 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                 elif bands:
                     psyntax = ("seq[GRCh38] " + vartype.lower() + "(" + chr1.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
 
+            # Only report DEL/DUPs that affect known genes
             knownGeneDf = vepCsq[(vepCsq["KnownTrx"] == 1)].sort_values(by=["START"])[["SYMBOL", "GeneImpact", "GeneEffect"]]
             
             if len(knownGeneDf) > 15:
@@ -444,34 +470,46 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                             & (recurrentSvs["KNOWNSVREQUIRESTRAND"] == 1)
                             & (recurrentSvs["KNOWNSVTYPE"].isin([vartype,"*"]))).any()
             
+            filter_keys = list(variant.filter.keys())
+            filter = "PASS" if not filter_keys else ";".join(filter_keys)
+
             if isRecurrentSv:
                 filter_list = [f for f in filter.split(";") if f not in ["MaxDepth", "MinSomaticScore"]]
                 filter = "PASS" if not filter_list else ';'.join(filter_list)
 
             category = ""
             if filter == "PASS" and isRecurrentSv:
-                category = "CNV"
+                category = "RECURRENTSV"
             elif filter != "PASS" and isRecurrentSv:
                 category = "OTHERSV"
-            elif filter == "PASS" and genestring != "None":
+            elif filter == "PASS" and len(knownGeneDf) > 0 and len(vepCsq[vepCsq['GeneImpact']==1]) > 0:
                 category = "OTHERSV"
             else:
                 category = None
+
+            if isRecurrentSv:
+                info_dict['RECURRENTSV'] = 'TRUE'
 
             # Add DEL/DUP info to list
             sv_deldup_list.append(dict(zip(svs_df_columns, [
                     category, vartype, chr1, int(pos1), chr1, int(pos2), svlen,
                     csyntax, psyntax, bandstring, genestring, genedetail, total_genes,
-                    filter, str(variant.id), abundance, ';'.join([f"{k}={v}" for k, v in info_dict.items()]),
+                    filter, str(variant.id), abundance, ';'.join([f"{k}={v}" if v!="TRUE" else f"{k}" for k, v in info_dict.items()]),
                 ])))
             
+            #
+            # FUSION ANALYSIS FOR DELETIONS 
             # Get fusion genes formed by a deletion if the deletion juxtaposes 2 genes
+            #   
             if vartype == "DEL" and len(vepCsq[(vepCsq['START']<=pos1)]) > 1 and len(vepCsq[(vepCsq['END']>=pos2)]) > 1:
                 # get cross product of left and right candidate fusions (those that extend beyond the DEL interval)
                 candidate_fusions = pd.merge(vepCsq[(vepCsq['START']<=pos1)], 
                                              vepCsq[(vepCsq['END']>=pos2)], how='cross', suffixes=('_l', '_r'))
 
+                candidate_fusions['FUSION_ORIENTATION'] = candidate_fusions.apply(lambda r: r['STRAND_r'] * r['STRAND_l'] * 1, axis=1)
+
                 is_inframe_splice = (
+                    (candidate_fusions['FUSION_ORIENTATION'] == 1) &
                     (candidate_fusions['IntronFrame_l'] != -1) &
                     (candidate_fusions['IntronFrame_l'] == candidate_fusions['IntronFrame_r']) &
                     (candidate_fusions['INTRON_l'].notna()) & (candidate_fusions['INTRON_l'] != '') &
@@ -485,10 +523,10 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                                     .query("SYMBOL_l != 'INTERGENIC' and SYMBOL_r != 'INTERGENIC'")
                                     .reset_index(drop=True))
 
-                candidate_fusions = pd.merge(candidate_fusions,recurrentSvs,how='left', left_on=['SYMBOL_l','SYMBOL_r'], right_on=['KNOWNSVGENE1','KNOWNSVGENE2'])
-                mask = (candidate_fusions['KNOWNSVGENE1'].notna() &
-                        (candidate_fusions['KNOWNSVTYPE'].isna() | (candidate_fusions['KNOWNSVTYPE'] == vartype)))
-                candidate_fusions['RecurrentSV'] = np.where(mask, 1, 0)
+                # Match to recurrent SVs
+                candidate_fusions = pd.concat([candidate_fusions, candidate_fusions.apply(lambda row: match_to_recurrentsvs(row, vartype, recurrentSvs), axis=1)], axis=1)
+
+                # Filter to recurrent SVs or those that form a fusion between 2 different genes where at least one is protein coding
                 candidate_fusions = candidate_fusions[(candidate_fusions['RecurrentSV'] == 1) |
                                                         ((candidate_fusions['SYMBOL_l'] != candidate_fusions['SYMBOL_r']) & 
                                                         ((candidate_fusions['BIOTYPE_l']=='protein_coding') | (candidate_fusions['BIOTYPE_r']=='protein_coding')))]
@@ -502,7 +540,7 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                     candidate_fusions['SYMBOL_r'] = candidate_fusions['SYMBOL_r'].fillna('INTERGENIC')
 
                     candidate_fusions[['genestring', 'genedetail']] = candidate_fusions.apply(
-                        lambda row: get_gene_syntax(row, 1, chr1, chr1, vartype),
+                        lambda row: get_gene_syntax(row, chr1, chr1, vartype),
                         axis=1,
                         result_type='expand'
                     )
@@ -520,10 +558,13 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                     if len(candidate_fusions) > 1:
                         info_dict['OTHERANNOTATIONS'] = '|'.join(candidate_fusions['genedetail'].tolist()[1:])
 
+                    if candidate_fusions.iloc[0]['RecurrentSV']:
+                        info_dict['RECURRENTSV'] = 'TRUE'
+
                     sv_deldup_list.append(dict(zip(svs_df_columns, [
                         category, vartype, chr1, int(pos1), chr1, int(pos2), svlen,
                         csyntax, psyntax, bandstring, candidate_fusions.iloc[0]['genestring'], candidate_fusions.iloc[0]['genedetail'], '2 genes',
-                        filter, str(variant.id), abundance, ';'.join([f"{k}={v}" for k, v in info_dict.items()]),
+                        filter, str(variant.id), abundance, ';'.join([f"{k}={v}" if v!="TRUE" else f"{k}" for k, v in info_dict.items()]),
                     ])))
 
     # Concatenate only if there are records to add
@@ -557,7 +598,9 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
 
         bnd_orientation = -1 if variant.alts[0].find("[") == 0 or variant.alts[0].find("]") > 0 else 1
 
-        filter_keys = list(variant.filter.keys())
+        # Get filters, excluding PASS, MaxDepth, and MinSomaticScore which we can ignore.
+        # If there are no other filters, this will be "PASS"
+        filter_keys = list(set(list(variant.filter.keys()) + list(mate.filter.keys())) - {'PASS', 'MaxDepth', 'MinSomaticScore'})
         filter = "PASS" if not filter_keys else ";".join(filter_keys)
 
         chr_l, pos_l = str(variant.chrom), variant.pos
@@ -584,10 +627,30 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
         if vartype == "INV":
             svtype = "inv"
             svlen = int(abs(pos_l - pos_r))
-            csyntax = f"{chr_l}:g.{pos_l}(+)::{chr_r}:g.{pos_r}({'+' if bnd_orientation == 1 else '-'})"
-            psyntax = f"seq[GRCh38] {svtype}({chr_l.replace('chr', '')})({bands_l};{bands_r})"
-            bandstring = f"{bands_l};{bands_r}"
+            # csyntax/HGVS nomenclature
+            if pos_l < pos_r:
+                csyntax = f"{chr_l}:g.{pos_l}(+)::{chr_r}:g.{pos_r}({'+' if bnd_orientation == 1 else '-'})"
+            else:
+                csyntax = f"{chr_r}:g.{pos_r}(+)::{chr_l}:g.{pos_l}({'+' if bnd_orientation == 1 else '-'})"
+            
+            # on the p arm, the band for the second coordinate should be listed first p|--+cen+---|q
+            if bands_l[0] == "p" and bands_r[0] == "p":
+                if pos_l < pos_r:
+                    psyntax = f"seq[GRCh38] {svtype}({chr_l.replace('chr', '')})({bands_r}{bands_l})"
+                    bandstring = f"{bands_r}{bands_l}"
+                else:
+                    psyntax = f"seq[GRCh38] {svtype}({chr_r.replace('chr', '')})({bands_l}{bands_r})"
+                    bandstring = f"{bands_l}{bands_r}"
 
+            # if pericentric or on the q arm, the band for the first coordinate should be listed first p|--+cen+---|q
+            else:
+                if pos_l < pos_r:
+                    psyntax = f"seq[GRCh38] {svtype}({chr_l.replace('chr', '')})({bands_l}{bands_r})"
+                    bandstring = f"{bands_l}{bands_r}"
+                else:
+                    psyntax = f"seq[GRCh38] {svtype}({chr_r.replace('chr', '')})({bands_r}{bands_l})"
+                    bandstring = f"{bands_r}{bands_l}"
+            
         elif vartype == "BND":
             svtype = "t"
             if chr_l in ['chrX', 'chrY', 'chrM'] or int(chr_l_num_str) < int(chr_r_num_str):
@@ -630,19 +693,23 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                 if col not in vepCsq1.columns:
                     vepCsq1[col] = None
                     
-            knownSvGene1Df = known_sv_genes_tag_to_dataframe(variant, known_sv_genes_header_desc)
-            knownSvGene1Df['IntronFrame'] = 0
-            knownSvGene1Df['ExonFrame'] = 0
-            vepCsq1 = pd.concat([vepCsq1, knownSvGene1Df[~knownSvGene1Df['SYMBOL'].isin(vepCsq1['SYMBOL'])]], ignore_index=True)
-            vepCsq1 = vepCsq1.where(pd.notna(vepCsq1), None)
-
-            vepCsq1["GeneEffect"] = vepCsq1.apply(lambda r: get_vep_gene_effect(r), axis=1)
-
         else:
             vepCsq1 = pd.DataFrame([{}], columns=vepCsq1.columns)
             for col in ["IntronFrame", "ExonFrame","GeneEffect"]:
                 if col not in vepCsq1.columns:
                     vepCsq1[col] = None
+
+        # add known gene annotations from the variant if not already present in vep annotation
+        knownSvGene1Df = known_sv_genes_tag_to_dataframe(variant, known_sv_genes_header_desc)
+        if knownSvGene1Df is not None and not knownSvGene1Df.empty:
+            knownSvGene1Df['IntronFrame'] = 0
+            knownSvGene1Df['ExonFrame'] = 0
+            vepCsq1 = pd.concat([vepCsq1, knownSvGene1Df[~knownSvGene1Df['SYMBOL'].isin(vepCsq1['SYMBOL'])]], ignore_index=True)
+            vepCsq1 = vepCsq1.where(pd.notna(vepCsq1), None)
+
+        # Get gene effect for variant annotation
+        if not vepCsq1.empty:
+            vepCsq1["GeneEffect"] = vepCsq1.apply(lambda r: get_vep_gene_effect(r), axis=1)
 
         vepCsq2 = vep_csq_to_dataframe(mate.info.get("CSQ"), csq_header_desc)
         vepCsq2 = vepCsq2[(vepCsq2['Allele']==mate.ref) | (vepCsq2['Allele']=="BND")].reset_index(drop=True)
@@ -654,28 +721,34 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                 if col not in vepCsq2.columns:
                     vepCsq2[col] = None
 
-            knownSvGene2Df = known_sv_genes_tag_to_dataframe(mate, known_sv_genes_header_desc)
-            knownSvGene2Df['IntronFrame'] = 0
-            knownSvGene2Df['ExonFrame'] = 0
-            vepCsq2 = pd.concat([vepCsq2, knownSvGene2Df[~knownSvGene2Df['SYMBOL'].isin(vepCsq2['SYMBOL'])]], ignore_index=True)
-            vepCsq2 = vepCsq2.where(pd.notna(vepCsq2), None)
-
-            vepCsq2["GeneEffect"] = vepCsq2.apply(lambda r: get_vep_gene_effect(r), axis=1)
-
         else:
             vepCsq2 = pd.DataFrame([{}], columns=vepCsq2.columns)
             for col in ["IntronFrame", "ExonFrame","GeneEffect"]:
                 if col not in vepCsq2.columns:
                     vepCsq2[col] = None
 
+        # add known gene annotations from the mate if not already present in vep annotation
+        knownSvGene2Df = known_sv_genes_tag_to_dataframe(mate, known_sv_genes_header_desc)
+        if knownSvGene2Df is not None and not knownSvGene2Df.empty:
+            knownSvGene2Df['IntronFrame'] = 0
+            knownSvGene2Df['ExonFrame'] = 0
+            vepCsq2 = pd.concat([vepCsq2, knownSvGene2Df[~knownSvGene2Df['SYMBOL'].isin(vepCsq2['SYMBOL'])]], ignore_index=True)
+            vepCsq2 = vepCsq2.where(pd.notna(vepCsq2), None)
+
+        # Get gene effect for mate annotation
+        if not vepCsq2.empty:
+            vepCsq2["GeneEffect"] = vepCsq2.apply(lambda r: get_vep_gene_effect(r), axis=1)
 
         # cross vepCsq1 (left) with vepCsq2 (right) for all possible combinations
         bnd_annot = pd.merge(vepCsq1, vepCsq2, how='cross', suffixes=('_l', '_r'))
         # fillna SYMBOL w/ INTERGENIC and the rest with 0
         bnd_annot[['SYMBOL_l','SYMBOL_r']] = bnd_annot[['SYMBOL_l','SYMBOL_r']].fillna('INTERGENIC')
 
+        bnd_annot['FUSION_ORIENTATION'] = bnd_annot.apply(lambda r: r['STRAND_r'] * r['STRAND_l'] * bnd_orientation, axis=1)
+
         if not bnd_annot.empty:
             is_inframe_splice = (
+                (bnd_annot['FUSION_ORIENTATION'] == 1) &
                 (bnd_annot['IntronFrame_l'] != -1) &
                 (bnd_annot['IntronFrame_l'] == bnd_annot['IntronFrame_r']) &
                 (bnd_annot['INTRON_l'].notna()) & (bnd_annot['INTRON_l'] != '') &
@@ -691,13 +764,17 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
         # 3. KnownTrx (descending)
         # 4. PICK (descending), SYMBOL L/R, InFrame, Distance L/R
         bnd_annot = bnd_annot.sort_values(by=["KnownGene_l", "KnownGene_r", "InframeSplice", "KnownTrx_l", "KnownTrx_r", "PICK_l", "PICK_r"], 
-                              ascending=[False, False, False, False, False, False, False]).drop_duplicates(subset=["SYMBOL_l","SYMBOL_r"], keep="first")
-
-        bnd_annot = pd.merge(bnd_annot,recurrentSvs,how='left', left_on=['SYMBOL_l','SYMBOL_r'], right_on=['KNOWNSVGENE1','KNOWNSVGENE2'])
-        mask = (bnd_annot['KNOWNSVGENE1'].notna() &
-                (bnd_annot['KNOWNSVTYPE'].isna() | (bnd_annot['KNOWNSVTYPE'] == vartype)))
-        bnd_annot['RecurrentSV'] = np.where(mask, 1, 0)
+                              ascending=[False, False, False, False, False, False, False]).drop_duplicates(subset=["SYMBOL_l",
+                              "SYMBOL_r"], keep="first")
         
+        # Annotate with matches to the RecurrentSV list
+        bnd_annot = pd.concat([bnd_annot, 
+                               bnd_annot.apply(lambda row: match_to_recurrentsvs(row, vartype, recurrentSvs), axis=1)], axis=1)
+        
+        # If DUX4 is in SYMBOL_l or SYMBOL_r but DUX is not in variant.id or mate.id, then RecurrentSv == 0
+        if ('DUX4' in bnd_annot['SYMBOL_l'].values or 'DUX4' in bnd_annot['SYMBOL_r'].values) and ('DUX' not in variant.id and 'DUX' not in mate.id):
+            bnd_annot['RecurrentSV'] = 0
+
         # exclude pairs in the same gene and region unless its a known gene
         bnd_annot = bnd_annot[(bnd_annot['KnownGene_l'] == 1) |
                                 (bnd_annot['KnownGene_r'] == 1) |
@@ -712,12 +789,20 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
             bnd_annot['INTRON_r'] = bnd_annot.apply(lambda r: _tail_or_none(r['INTRON_r']) if r['SYMBOL_r']!='INTERGENIC' else None,axis=1)
                 
             bnd_annot[['genestring', 'genedetail']] = bnd_annot.apply(
-                lambda row: get_gene_syntax(row, bnd_orientation, chr_l, chr_r, vartype),
+                lambda row: get_gene_syntax(row, chr_l, chr_r, vartype),
                 axis=1,
                 result_type='expand'
             )
             
-            bnd_annot = bnd_annot.sort_values(by=['RecurrentSV', 'InframeSplice'],ascending=[False,False])
+            bnd_annot = bnd_annot.sort_values(by=['RecurrentSV', 'KnownGene_l', 'KnownGene_r', 'InframeSplice'],ascending=[False,False,False,False])
+
+            # if the top annotation is a transcript_region then omit the rest of the annotations
+            region_l_val = bnd_annot.iloc[0].get('Region_l')
+            region_r_val = bnd_annot.iloc[0].get('Region_r')
+            region_l_str = '' if (region_l_val is None or (isinstance(region_l_val, float) and pd.isna(region_l_val))) else region_l_val
+            region_r_str = '' if (region_r_val is None or (isinstance(region_r_val, float) and pd.isna(region_r_val))) else region_r_val
+            if 'transcript_region' in region_l_str or 'transcript_region' in region_r_str:
+                bnd_annot = bnd_annot.iloc[[0]]
 
             top_annot = bnd_annot.iloc[0]
             genestring = top_annot['genestring']
@@ -725,15 +810,43 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
             gene_l = top_annot.get('SYMBOL_l')
             gene_r = top_annot.get('SYMBOL_r')
             region_l = top_annot.get('GeneEffect_l') or "N/A"
+            distance_l = top_annot.get('DISTANCE_l')
             region_r = top_annot.get('GeneEffect_r') or "N/A"
+            distance_r = top_annot.get('DISTANCE_r')
 
             total_genes = len(set([g for g in [gene_l, gene_r] if g != "INTERGENIC"]))
             total_genes = f"{total_genes} gene" + ("s" if total_genes != 1 else "")
-            
-            if svtype == "inv" and gene_l == gene_r and region_l == region_r and ("intron" in region_l or "intragenic" in region_l):
-                continue
+
+            # Final set of conditions to report SVs.
+            # Basic logic is:
+            # 1. All recurrent SVs are reportable.
+            # 2. Non-recurrent SVs are reportable if they involve a known gene
+            # 4. Non-recurrent SVs that involve other genes are reported as long as they affect the gene.
+
+            reportableSv = True
+
+            # inversions in the same gene and region are not reportable. Neither are inversions in the same gene unless its a known gene.
+            if (svtype == "inv" and gene_l == gene_r and 
+                ((region_l == region_r and ("intron" in region_l or "intragenic" in region_l)) or
+                not knownTrx["Gene"].isin([gene_l, gene_r]).any())
+            ):
+                reportableSv = False
+
+            # inversions upstream or downstream of the same gene are not reportable.
+            if svtype == "inv" and gene_l == gene_r and distance_l > 0 and distance_r > 0:
+                reportableSv = False
+
+            # inversions in a non-hotspot gene are not reportable.
             if svtype == "inv" and not knownTrx["Gene"].isin([gene_l, gene_r]).any():
-                continue
+                reportableSv = False
+
+            # only report events involving predicted genes and intergenic regions if there is a knowngene.
+            if (gene_l == "INTERGENIC" or "ENS" in gene_l or gene_r == "INTERGENIC" or "ENS" in gene_r) and not knownTrx["Gene"].isin([gene_l, gene_r]).any():
+                reportableSv = False
+
+            # events where both ends are in the telomeres are not reportable
+            if (bands_l in ['pter', 'qter'] and bands_r in ['pter', 'qter']):
+                reportableSv = False
 
 # This logic will only call an event recurrent if its inframe
 #            isRecurrentSv = (bnd_annot.iloc[0]['RecurrentSV'] and 
@@ -742,26 +855,29 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
             isRecurrentSv = bnd_annot.iloc[0]['RecurrentSV']
 
             category = ""
-            if isRecurrentSv:
-                filter_list = [f for f in filter.split(";") if f not in ["MaxDepth", "MinSomaticScore"]]
-                filter = "PASS" if not filter_list else ';'.join(filter_list)
 
-            if filter == "PASS" and isRecurrentSv:
+            if isRecurrentSv and filter == "PASS" and not (gene_l == "INTERGENIC" or "ENS" in gene_l or gene_r == "INTERGENIC" or "ENS" in gene_r):
                 category = "RECURRENTSV"
-            elif filter != "PASS" and isRecurrentSv:
+
+            elif isRecurrentSv and ((gene_l == "INTERGENIC" or "ENS" in gene_l or gene_r == "INTERGENIC" or "ENS" in gene_r) or filter != "PASS"):
                 category = "OTHERSV"
-            elif filter == "PASS" and (knownTrx["Gene"].isin([gene_l, gene_r]).any() or (gene_l != "INTERGENIC" and "ENS" not in gene_l and gene_l != "INTERGENIC" and "ENS" not in gene_r)):
+                
+            elif reportableSv and filter == "PASS":
                 category = "OTHERSV"
+                
             else:
                 category = None
 
             if len(bnd_annot) > 1:
                 info_dict['OTHERANNOTATIONS'] = '|'.join(bnd_annot['genedetail'].tolist()[1:])
 
+            if isRecurrentSv:
+                info_dict['RECURRENTSV'] = "TRUE"
+
             sv_bnd_list.append(dict(zip(svs_df_columns, [
                     category, vartype, chr_l, int(pos_l), chr_r, int(pos_r), svlen,
                     csyntax, psyntax, bandstring, genestring, genedetail, total_genes,
-                    filter, str(variant.id) + ";" + str(mate.id), abundance, ';'.join([f"{k}={v}" for k, v in info_dict.items()])
+                    filter, str(variant.id) + ";" + str(mate.id), abundance, ';'.join([f"{k}={v}" if v!="TRUE" else f"{k}" for k, v in info_dict.items()])
                 ])))
         
         alreadydone.add(variant.id)
@@ -836,10 +952,10 @@ def collect_cnvs(cnv_vcf: str, knownTrx: pd.DataFrame, sex: str = "female",
         genes = "None"
         known_genes = "None"
         total_genes = "None"
-        vepgenes = variant.info.get("VEPGENES")
-        if vepgenes is not None and isinstance(vepgenes, str):
+        vepgenes = variant.info.get("VEPGENES",None)
+        if vepgenes is not None:
             genes = list(
-                set([item for item in vepgenes.split(",") if item != ""])
+                set([item for item in vepgenes if item])
             )
             known_genes = list(set(knownTrx["Gene"].unique().tolist()) & set(genes))
             if len(known_genes) > 10:
@@ -976,12 +1092,12 @@ def collect_cnvs(cnv_vcf: str, knownTrx: pd.DataFrame, sex: str = "female",
             abundance = round(float(cf_float), 1)
 
         category = None
+        
         # final filtering step. Skip CNVs if there are no known genes
         # and there are filters other than "PASS", "MinCNVAbundance", "MinCNVSize", or "segmentMean"
         if genestring == "None" and not (
             filter == "PASS"
             or filter == "MinCNVAbundance"
-            or filter == "MinCNVSize"
             or filter == "segmentMean"
         ):
             continue
@@ -1065,6 +1181,8 @@ def main():
     recurrentSvs = pd.concat([recurrentSvs, swapped], axis=0, ignore_index=True)
     recurrentSvs.columns = ["KNOWNSVGENE1", "KNOWNSVGENE2", "KNOWNSVREQUIRESTRAND", "KNOWNSVTYPE"]
     recurrentSvs = recurrentSvs.where(pd.notna(recurrentSvs), None)
+    # fill KNOWNSVTYPE None with BND
+    recurrentSvs["KNOWNSVTYPE"] = recurrentSvs["KNOWNSVTYPE"].fillna("BND")
 
     # Import target gene list
     targetDf = read_targets_bed(args.bed_file)
