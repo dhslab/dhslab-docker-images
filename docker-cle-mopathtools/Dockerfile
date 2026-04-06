@@ -18,8 +18,8 @@ RUN apt-get update -y && \
     gawk \
     wget \
     openssh-client \
-    grep \
     less \
+    grep \
     samtools \
     bcftools \
     bedtools \

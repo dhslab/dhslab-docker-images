@@ -449,8 +449,8 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                 elif bands:
                     psyntax = ("seq[GRCh38] " + vartype.lower() + "(" + chr1.replace("chr", "") + ")(" + bands[0] + bands[-1] + ")")
 
-            # Only report DEL/DUPs that affect known genes
-            knownGeneDf = vepCsq[(vepCsq["KnownTrx"] == 1)].sort_values(by=["START"])[["SYMBOL", "GeneImpact", "GeneEffect"]]
+            # Only report DEL/DUPs that impact known genes
+            knownGeneDf = vepCsq[(vepCsq["KnownTrx"] == 1) & (vepCsq["GeneImpact"] == 1)].sort_values(by=["START"])[["SYMBOL", "GeneImpact", "GeneEffect"]]
             
             if len(knownGeneDf) > 15:
                 genestring = f"{len(knownGeneDf)} genes"
