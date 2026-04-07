@@ -15,8 +15,8 @@ RUN apt-get update -y && \
     ca-certificates \
     curl \
     tzdata \
-    gawk \
     wget \
+    gawk \
     openssh-client \
     less \
     grep \
