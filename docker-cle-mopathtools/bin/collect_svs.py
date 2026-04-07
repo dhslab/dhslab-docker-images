@@ -467,7 +467,6 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
 
             isRecurrentSv = ((recurrentSvs["KNOWNSVGENE1"].isin(knownGeneDf['SYMBOL']))
                             & (recurrentSvs["KNOWNSVGENE2"].isin(knownGeneDf['SYMBOL']))
-                            & (recurrentSvs["KNOWNSVREQUIRESTRAND"] == 1)
                             & (recurrentSvs["KNOWNSVTYPE"].isin([vartype,"*"]))).any()
             
             filter_keys = list(variant.filter.keys())
@@ -517,21 +516,20 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                 )
                 candidate_fusions['InframeSplice'] = np.where(is_inframe_splice, 1, 0)
 
+                # Sort and filter. Omit intragenic fusions and fusions where the breakpoints are within the gene body of the same gene. 
+                # Keep only one fusion per gene pair, prioritizing in-frame splice fusions with known transcripts.
                 candidate_fusions = (candidate_fusions.sort_values(by=["KnownGene_l", "KnownGene_r", "InframeSplice", "KnownTrx_l", "KnownTrx_r", "PICK_l", "PICK_r"], 
                                                                     ascending=[False, False, False, False, False, False, False])
+                                    .query("SYMBOL_l != SYMBOL_r and (END_l <= START_r or END_r <= START_l)")                                    
                                     .drop_duplicates(subset=["SYMBOL_l","SYMBOL_r"], keep="first")
                                     .query("SYMBOL_l != 'INTERGENIC' and SYMBOL_r != 'INTERGENIC'")
                                     .reset_index(drop=True))
 
-                # Match to recurrent SVs
-                candidate_fusions = pd.concat([candidate_fusions, candidate_fusions.apply(lambda row: match_to_recurrentsvs(row, vartype, recurrentSvs), axis=1)], axis=1)
-
-                # Filter to recurrent SVs or those that form a fusion between 2 different genes where at least one is protein coding
-                candidate_fusions = candidate_fusions[(candidate_fusions['RecurrentSV'] == 1) |
-                                                        ((candidate_fusions['SYMBOL_l'] != candidate_fusions['SYMBOL_r']) & 
-                                                        ((candidate_fusions['BIOTYPE_l']=='protein_coding') | (candidate_fusions['BIOTYPE_r']=='protein_coding')))]
-
                 if not candidate_fusions.empty:
+
+                    # Match to recurrent SVs
+                    candidate_fusions = pd.concat([candidate_fusions, candidate_fusions.apply(lambda row: match_to_recurrentsvs(row, vartype, recurrentSvs), axis=1)], axis=1)
+
                     candidate_fusions['EXON_l'] = candidate_fusions['EXON_l'].apply(_tail_or_none)
                     candidate_fusions['INTRON_l'] = candidate_fusions['INTRON_l'].apply(_tail_or_none)
                     candidate_fusions['EXON_r'] = candidate_fusions['EXON_r'].apply(_tail_or_none)
