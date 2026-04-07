@@ -479,7 +479,7 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
 
             category = ""
             if filter == "PASS" and isRecurrentSv:
-                category = "RECURRENTSV"
+                category = "CNV"
             elif filter != "PASS" and isRecurrentSv:
                 category = "OTHERSV"
             elif filter == "PASS" and len(knownGeneDf) > 0 and len(vepCsq[vepCsq['GeneImpact']==1]) > 0:
@@ -549,7 +549,7 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
 
                     category = ""
                     if filter == "PASS" and candidate_fusions.iloc[0]['RecurrentSV']:
-                        category = "CNV"
+                        category = "RECURRENTSV"
                     elif filter != "PASS" and candidate_fusions.iloc[0]['RecurrentSV']:
                         category = "OTHERSV"
                     else:
