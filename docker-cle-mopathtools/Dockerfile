@@ -40,7 +40,8 @@ RUN python -m pip install --no-cache-dir \
     pyranges \
     numpy \  
     pandas \
-    pysam
+    pysam \
+    openpyxl
 
 COPY bin/*.py /usr/local/bin/ 
 
