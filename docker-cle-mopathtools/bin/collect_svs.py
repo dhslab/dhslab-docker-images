@@ -507,12 +507,17 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
 
                 candidate_fusions['FUSION_ORIENTATION'] = candidate_fusions.apply(lambda r: r['STRAND_r'] * r['STRAND_l'] * 1, axis=1)
 
+                # Is inframe if orientation == 0 (meaning one end is IGH or a similar locus)
+                # or if orientation == 1 and both sides have intron annotations and the intron frames match.
                 is_inframe_splice = (
-                    (candidate_fusions['FUSION_ORIENTATION'] == 1) &
-                    (candidate_fusions['IntronFrame_l'] != -1) &
-                    (candidate_fusions['IntronFrame_l'] == candidate_fusions['IntronFrame_r']) &
-                    (candidate_fusions['INTRON_l'].notna()) & (candidate_fusions['INTRON_l'] != '') &
-                    (candidate_fusions['INTRON_r'].notna()) & (candidate_fusions['INTRON_r'] != '')
+                    (candidate_fusions['FUSION_ORIENTATION'] == 0) |
+                    (
+                        (candidate_fusions['FUSION_ORIENTATION'] == 1) &                     
+                        (candidate_fusions['INTRON_l'].notna()) & (candidate_fusions['INTRON_l'] != '') &
+                        (candidate_fusions['INTRON_r'].notna()) & (candidate_fusions['INTRON_r'] != '') &
+                        (candidate_fusions['IntronFrame_l'] != -1) &
+                        (candidate_fusions['IntronFrame_l'] == candidate_fusions['IntronFrame_r'])
+                    )
                 )
                 candidate_fusions['InframeSplice'] = np.where(is_inframe_splice, 1, 0)
 
@@ -520,10 +525,13 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
                 # Keep only one fusion per gene pair, prioritizing in-frame splice fusions with known transcripts.
                 candidate_fusions = (candidate_fusions.sort_values(by=["KnownGene_l", "KnownGene_r", "InframeSplice", "KnownTrx_l", "KnownTrx_r", "PICK_l", "PICK_r"], 
                                                                     ascending=[False, False, False, False, False, False, False])
-                                    .query("SYMBOL_l != SYMBOL_r and (END_l <= START_r or END_r <= START_l)")                                    
+                                    .query("SYMBOL_l != SYMBOL_r and (END_l <= START_r or END_r <= START_l) and InframeSplice == 1")                                    
                                     .drop_duplicates(subset=["SYMBOL_l","SYMBOL_r"], keep="first")
                                     .query("SYMBOL_l != 'INTERGENIC' and SYMBOL_r != 'INTERGENIC'")
                                     .reset_index(drop=True))
+
+                # Filter events that are unlikely to be true fusions based on the SV length and the distance between the genes.
+                candidate_fusions = candidate_fusions[(candidate_fusions['START_r'] - candidate_fusions['END_l'] - svlen < 10000)]
 
                 if not candidate_fusions.empty:
 
@@ -741,11 +749,14 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
 
         if not bnd_annot.empty:
             is_inframe_splice = (
-                (bnd_annot['FUSION_ORIENTATION'] == 1) &
-                (bnd_annot['IntronFrame_l'] != -1) &
-                (bnd_annot['IntronFrame_l'] == bnd_annot['IntronFrame_r']) &
-                (bnd_annot['INTRON_l'].notna()) & (bnd_annot['INTRON_l'] != '') &
-                (bnd_annot['INTRON_r'].notna()) & (bnd_annot['INTRON_r'] != '')
+                (bnd_annot['FUSION_ORIENTATION'] == 0) |
+                (
+                    (bnd_annot['FUSION_ORIENTATION'] == 1) &
+                    (bnd_annot['INTRON_l'].notna()) & (bnd_annot['INTRON_l'] != '') &
+                    (bnd_annot['INTRON_r'].notna()) & (bnd_annot['INTRON_r'] != '') &
+                    (bnd_annot['IntronFrame_l'] != -1) &
+                    (bnd_annot['IntronFrame_l'] == bnd_annot['IntronFrame_r'])
+                )
             )
             bnd_annot['InframeSplice'] = np.where(is_inframe_splice, 1, 0)
         else:

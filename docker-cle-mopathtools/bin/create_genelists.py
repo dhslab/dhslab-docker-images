@@ -92,7 +92,7 @@ def generate_transcript_bed(gene_id, gene_name, start, end, transcript_data, reg
         type = "transcript_region"
         trx_start = start
         trx_end = end
-        strand = "1"
+        strand = "0"
 
     else:
         # Get transcript-level information
