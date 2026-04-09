@@ -624,30 +624,25 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
 
         if vartype == "INV":
             svtype = "inv"
-            svlen = int(abs(pos_l - pos_r))
-            # csyntax/HGVS nomenclature
-            if pos_l < pos_r:
-                csyntax = f"{chr_l}:g.{pos_l}(+)::{chr_r}:g.{pos_r}({'+' if bnd_orientation == 1 else '-'})"
-            else:
-                csyntax = f"{chr_r}:g.{pos_r}(+)::{chr_l}:g.{pos_l}({'+' if bnd_orientation == 1 else '-'})"
+
+            # for inversions, switch coordinates if the left breakpoint is after the right one.
+            if pos_l > pos_r:
+                chr_l, pos_l, bands_l, chr_r, pos_r, bands_r = chr_r, pos_r, bands_r, chr_l, pos_l, bands_l
+
+            svlen = int(pos_r - pos_l)
+
+            csyntax = f"{chr_l}:g.{pos_l}(+)::{chr_r}:g.{pos_r}({'+' if bnd_orientation == 1 else '-'})"
             
             # on the p arm, the band for the second coordinate should be listed first p|--+cen+---|q
             if bands_l[0] == "p" and bands_r[0] == "p":
-                if pos_l < pos_r:
-                    psyntax = f"seq[GRCh38] {svtype}({chr_l.replace('chr', '')})({bands_r}{bands_l})"
-                    bandstring = f"{bands_r}{bands_l}"
-                else:
-                    psyntax = f"seq[GRCh38] {svtype}({chr_r.replace('chr', '')})({bands_l}{bands_r})"
-                    bandstring = f"{bands_l}{bands_r}"
+                psyntax = f"seq[GRCh38] {svtype}({chr_l.replace('chr', '')})({bands_r}{bands_l})"
+                bandstring = f"{bands_r}{bands_l}"
 
             # if pericentric or on the q arm, the band for the first coordinate should be listed first p|--+cen+---|q
             else:
-                if pos_l < pos_r:
-                    psyntax = f"seq[GRCh38] {svtype}({chr_l.replace('chr', '')})({bands_l}{bands_r})"
-                    bandstring = f"{bands_l}{bands_r}"
-                else:
-                    psyntax = f"seq[GRCh38] {svtype}({chr_r.replace('chr', '')})({bands_r}{bands_l})"
-                    bandstring = f"{bands_r}{bands_l}"
+                psyntax = f"seq[GRCh38] {svtype}({chr_l.replace('chr', '')})({bands_l}{bands_r})"
+                bandstring = f"{bands_l}{bands_r}"
+                
             
         elif vartype == "BND":
             svtype = "t"
