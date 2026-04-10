@@ -252,11 +252,11 @@ def get_gene_syntax(row, chr_l, chr_r, vartype=None):
                 genedetail = f"{gene_l}(-){region_l}{gene_separator_detail}{gene_r}(-){region_r}"
 
         else:
-            if strand_l == 1:  # FWD strand, left to right
+            if strand_l == 1 or strand_l == 0:  # FWD strand, left to right, or left gene is a driver locus like IGH, etc.
                 genestring = f"{gene_l}{gene_separator}{gene_r}"
                 genedetail = f"{gene_l}(+){region_l}{gene_separator_detail}{gene_r}(+){region_r}"
 
-            elif strand_l == -1:  # REV strand, right to left
+            elif strand_l == -1 or strand_r == 0:  # REV strand, right to left, or right gene is a driver locus like IGH, etc.
                 genestring = f"{gene_r}{gene_separator}{gene_l}"
                 genedetail = f"{gene_r}(-){region_r}{gene_separator_detail}{gene_l}(-){region_l}"
 
@@ -1199,17 +1199,24 @@ def main():
     if args.cnv_vcf:
         results.append(collect_cnvs(args.cnv_vcf, knownTrx, sex=args.sex))
 
-    if results:
-        out = pd.concat(results, ignore_index=True) if len(results) > 1 else results[0]
+    expected_cols = [
+        "category", "type", "chrom1", "pos1", "chrom2", "pos2", "length",
+        "csyntax", "psyntax", "bands", "known_genes", "known_gene_detail",
+        "total_genes", "filters", "id", "abundance", "info",
+    ]
+
+    valid_results = [df for df in results if not df.empty]
+
+    if valid_results:
+        out = pd.concat([df.dropna(axis=1, how='all') for df in valid_results], ignore_index=True) if len(valid_results) > 1 else valid_results[0]
         out = out.sort_values(by=["chrom1", "pos1", "chrom2", "pos2"], key=natsort.natsort_keygen()).reset_index(drop=True)
+        if "length" not in out.columns:
+            out["length"] = pd.NA
         out['length'] = pd.to_numeric(out['length'], errors='coerce').astype('Int64')
+        out = out.reindex(columns=expected_cols)
 
     else:
-        out = pd.DataFrame(columns=[
-            "category", "type", "chrom1", "pos1", "chrom2", "pos2", "length",
-            "csyntax", "psyntax", "bands", "known_genes", "known_gene_detail",
-            "total_genes", "filters", "id", "abundance", "info",
-        ])
+        out = pd.DataFrame(columns=expected_cols)
 
     if args.outfile:
         out.to_csv(args.outfile, sep="\t", index=False, header=True, na_rep="NA")
