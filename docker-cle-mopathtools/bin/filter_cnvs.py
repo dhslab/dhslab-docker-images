@@ -497,7 +497,7 @@ def main():
                         # Cast each element to native Python int
                         nrec.samples[0][k] = tuple(int(v) for v in val)
                 else:
-                    nrec.samples[0][k] = val
+                    nrec.samples[0][k] = (val[0],val[0]) if isinstance(val, tuple) and len(val) == 1 else val
             else:
                 nrec.samples[0][k] = tuple(
                     itertools.repeat(None, inVcf.header.formats.get(k).number)
