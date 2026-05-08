@@ -594,7 +594,7 @@ def collect_svs(sv_vcf: str, knownTrx: pd.DataFrame, reportableCnvGeneList: list
         mate = passedvars[mate_id]
 
         if ("KnownSvGenes" not in variant.info and "KnownSvGenes" not in mate.info) and \
-           ("CSQ" not in variant.info or "CSQ" not in mate.info):
+           ("CSQ" not in variant.info and "CSQ" not in mate.info):
             continue
 
         vartype = variant.info.get("SVTYPE")
