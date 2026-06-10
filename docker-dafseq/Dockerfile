@@ -5,8 +5,8 @@ LABEL description="DAF-seq tools: minimap2 + python deps for the nf-dafseq dedup
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# The base image already provides samtools, pysam, pandas, numpy, scipy and the UCSC
-# bedGraphToBigWig used by phasing. Add what it lacks for nf-dafseq:
+# The base image (python 3.8) already provides samtools, pysam, pandas, numpy, scipy,
+# scikit-learn, matplotlib and the UCSC bedGraphToBigWig used by phasing. Add what it lacks:
 
 # minimap2 (alignment step), pinned to match the workflow
 ENV MINIMAP2_VERSION=2.30
@@ -18,11 +18,10 @@ RUN cd /opt && \
     cp minimap2 /usr/local/bin/ && \
     cd /opt && rm -rf minimap2/*.o
 
-# python packages used by the dedup (clustering) and QC plotting that are not in the base image
-RUN pip install --no-cache-dir \
-    scikit-learn \
-    seaborn \
-    matplotlib==3.10.3
+# seaborn is the only QC-plotting dep missing from the base; install it without pinning.
+# (Do NOT pin matplotlib here: the base image is python 3.8, and matplotlib>=3.6 drops py3.8 —
+# pip would fail. scikit-learn and matplotlib are already present in the base.)
+RUN pip install --no-cache-dir seaborn
 
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
