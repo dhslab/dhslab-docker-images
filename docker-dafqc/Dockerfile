@@ -12,7 +12,7 @@ LABEL description="nf-dafseq step 2: pixi + DAF-QC-SMK (pinned) + prebuilt Snake
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git ca-certificates curl bash procps && \
+        git ca-certificates curl bash procps bc && \
     rm -rf /var/lib/apt/lists/*
 
 # --- pixi (pinned) ---
