@@ -31,6 +31,7 @@ Read1File: <read1 file path>
 Read2File: <read2 file path>
 
 -Obtains RGPL info from either a RunParameters.xml file or the reads (info from reads is incomplete)
+-If UMIs are used, the script checks for multiple RGLB for the same sample and errors if any are found.
 
 """
 
@@ -39,6 +40,7 @@ def parse_arguments():
         description="Prepare fastq_list.csv file from a passed list file or reads. If a Runparameters.xml file is passed, additional metadata is added."
     )
     parser.add_argument("-i", "--id", type=str, required=True, help="Sample ID")
+    parser.add_argument("--umi", action="store_true", help="Indicate if UMIs are used") # This is to check for multiple RGLB for the same sample when UMIs are used
     parser.add_argument("-1", "--read1", type=check_file, help="Path to read1")
     parser.add_argument("-2", "--read2", type=check_file, help="Path to read2")
     parser.add_argument(
@@ -229,6 +231,19 @@ def main():
         read1,
         read2,
     ]
+
+    # check fqlistout for duplicate RGIDs and error if there are any
+    duplicate_rgids = fqlistout[fqlistout.duplicated(subset=["RGID"], keep=False)]
+    if not duplicate_rgids.empty:
+        print(f"Duplicate RGIDs found:\n{duplicate_rgids}")
+        sys.exit(1)
+
+    # If UMIs are used, check for multiple RGLB for the same sample and error if there are any
+    if args.umi:
+        duplicate_rglb = fqlistout[fqlistout.duplicated(subset=["RGLB", "RGSM"], keep=False)]
+        if not duplicate_rglb.empty:
+            print(f"Duplicate RGLB found:\n{duplicate_rglb}")
+            sys.exit(1)
 
     fqlistout.to_csv(f"{args.id}.fastq_list.csv", index=False)
 

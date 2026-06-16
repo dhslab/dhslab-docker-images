@@ -47,3 +47,4 @@ COPY bin/*.py /usr/local/bin/
 
 RUN chmod +x /usr/local/bin/*.py
 
+ENTRYPOINT []
