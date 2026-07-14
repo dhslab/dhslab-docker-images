@@ -1,0 +1,2 @@
+# Place SCGE off-target analysis scripts here. They are copied to /opt/scge-offtarget/bin,
+# made executable, and added to PATH by the Dockerfile. Remove this file once real scripts land.
