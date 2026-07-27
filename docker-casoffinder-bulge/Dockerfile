@@ -4,9 +4,7 @@
 # whose output columns the pipeline's combine_offtarget_results.py parses) + UCSC
 # faToTwoBit (so PREP_CASOFFINDER_REF can build the .2bit from params.fasta in the same
 # image). Satisfies `container` in prep_casoffinder_ref.nf and casoffinder.nf.
-#
-# CPU-only: cas-offinder runs on the 'C' (CPU) OpenCL device via pocl, so no GPU is needed
-# on the SLURM nodes.
+
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
