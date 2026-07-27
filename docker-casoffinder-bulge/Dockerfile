@@ -5,11 +5,6 @@
 # faToTwoBit (so PREP_CASOFFINDER_REF can build the .2bit from params.fasta in the same
 # image). Satisfies `container` in prep_casoffinder_ref.nf and casoffinder.nf.
 #
-# To publish: copy this directory into the lab image repo (dhslab/dhslab-docker-images) as
-# `docker-casoffinder-bulge/` and push to main. The repo's push_docker.yaml auto-builds any
-# changed `**/Dockerfile` and pushes it to ghcr.io/dhslab/<dir> with :latest + :YYMMDD tags,
-# so the directory name must stay `docker-casoffinder-bulge` to match the image the modules pin.
-#
 # CPU-only: cas-offinder runs on the 'C' (CPU) OpenCL device via pocl, so no GPU is needed
 # on the SLURM nodes.
 FROM ubuntu:22.04
