@@ -42,15 +42,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     valgrind \
     && apt-get clean all
 
-# 2. Add Microsoft's official repository
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-    curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
-
-# 3. Install the driver and clean up
-RUN apt-get update && \
-    ACCEPT_EULA=Y apt-get install -y msodbcsql18 && \
-    rm -rf /var/lib/apt/lists/*
-
 #set timezone to CDT
 RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
