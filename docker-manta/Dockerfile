@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
 LABEL version="1.0"
 LABEL description="Image with basic bioinformatics tools and manta"
@@ -47,13 +47,12 @@ RUN ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
 RUN echo "America/Chicago" > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
 
-# Install Python 3.11 and pip
+# Install Python 2
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 python3.11-venv python3.11-dev python3-pip && \
-    ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
-    ln -sf /usr/bin/pip3 /usr/bin/pip && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
-    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1 && \
+    python2 python2-dev python-pip && \
+    ln -sf /usr/bin/python2.7 /usr/bin/python2 && \
+    ln -sf /usr/bin/python2.7 /usr/bin/python && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1 && \
     apt-get clean all
 
 # Install htslib, samtools, and bcftools from source
