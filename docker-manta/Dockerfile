@@ -6,7 +6,6 @@ LABEL description="Image with basic bioinformatics tools and manta"
 ENV DEBIAN_FRONTEND noninteractive
 
 # Install essential packages
-# some basic tools
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential \
     bzip2 \
