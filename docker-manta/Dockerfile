@@ -77,7 +77,7 @@ RUN cd /tmp && \
     ./configure --prefix=/usr/local && make && make install && \
     rm -rf /tmp/htslib* /tmp/samtools* /tmp/bcftools*
     
-ENV manta_version 1.5.0
+ENV manta_version 1.6.0
 
 WORKDIR /opt/
 
