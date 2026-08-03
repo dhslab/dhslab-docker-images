@@ -85,4 +85,4 @@ RUN wget https://github.com/Illumina/manta/releases/download/v${manta_version}/m
     tar -jxvf manta-${manta_version}.centos6_x86_64.tar.bz2 && \
     mv manta-${manta_version}.centos6_x86_64 /usr/local/src/manta
 
-COPY configManta.hg38.py.ini /usr/local/src/manta/bin/configManta.py.ini
+#COPY configManta.hg38.py.ini /usr/local/src/manta/bin/configManta.py.ini
