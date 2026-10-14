@@ -1,4 +1,4 @@
-FROM ontresearch/dorado@sha256:1a98a3d8a5341d98bd84dd41ce2bc2a5a2dae5cb31268d0b3aff9dfec52defd6
+FROM ontresearch/dorado@sha256:832c995858ac5418f4357d87c31faf8259e4dba45201c78216704baa05d651c6
 LABEL description="Image with dorado and all models"
 USER root
 
