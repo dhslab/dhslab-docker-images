@@ -1,8 +1,19 @@
 FROM mdivr/r-ver_4.2.2:v2
 
+# Install system dependencies required by R packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        pkg-config \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN mkdir -p /opt/chicago/bin
 
 COPY chicago/chicagoTools/* /opt/chicago/bin/
+
 
 RUN chmod -R 777 /opt/chicago/bin && \
     ln -s /opt/chicago/bin/* /usr/local/bin/ && \
@@ -10,6 +21,8 @@ RUN chmod -R 777 /opt/chicago/bin && \
     ln -s /usr/local/lib/R/site-library/littler/examples/installBioc.r /usr/local/bin/installBioc.r && \
     Rscript -e "install.packages('BiocManager')" && \
     Rscript -e "BiocManager::install(version = '3.16')" && \
+    Rscript -e "install.packages(c('curl', 'openssl', 'httr'), repos='https://cloud.r-project.org')" && \
+    Rscript -e "stopifnot(requireNamespace('curl'), requireNamespace('openssl'), requireNamespace('httr'))" && \
     installBioc.r --update --deps TRUE --error GenomicInteractions AnnotationHub && \
     install2.r --deps TRUE --error argparser devtools && \
     Rscript -e "library(devtools); install_bitbucket('chicagoTeam/Chicago', subdir='Chicago')"
