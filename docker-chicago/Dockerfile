@@ -10,6 +10,10 @@ RUN apt-get update && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libuv1 libuv1-dev && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN mkdir -p /opt/chicago/bin
 
 COPY chicago/chicagoTools/* /opt/chicago/bin/
@@ -23,9 +27,9 @@ RUN chmod -R 777 /opt/chicago/bin && \
     Rscript -e "BiocManager::install(version = '3.16')" && \
     Rscript -e "install.packages(c('curl', 'openssl', 'httr'), repos='https://cloud.r-project.org')" && \
     Rscript -e "stopifnot(requireNamespace('curl'), requireNamespace('openssl'), requireNamespace('httr'))" && \
-    installBioc.r --update --deps TRUE --error GenomicInteractions AnnotationHub && \
-    install2.r --deps TRUE --error argparser devtools && \
-    Rscript -e "library(devtools); install_bitbucket('chicagoTeam/Chicago', subdir='Chicago')"
+    installBioc.r --update --deps NA --error GenomicInteractions AnnotationHub && \
+    install2.r --deps NA --error argparser remotes && \
+    Rscript -e "library(remotes); remotes::install_bitbucket('chicagoTeam/Chicago', subdir='Chicago', upgrade='never')"
 
 # Install Chicdiff dependencies
 RUN Rscript -e "BiocManager::install(c('DESeq2', 'IHW'), ask=FALSE, update=FALSE)"
