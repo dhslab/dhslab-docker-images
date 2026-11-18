@@ -18,18 +18,25 @@ RUN mkdir -p /opt/chicago/bin
 
 COPY chicago/chicagoTools/* /opt/chicago/bin/
 
+ENV R_DEFAULT_INTERNET_TIMEOUT=600
+
+RUN Rscript -e "stopifnot(getOption('timeout') == 600)"
 
 RUN chmod -R 777 /opt/chicago/bin && \
     ln -s /opt/chicago/bin/* /usr/local/bin/ && \
     rm /usr/local/bin/*.md && \
     ln -s /usr/local/lib/R/site-library/littler/examples/installBioc.r /usr/local/bin/installBioc.r && \
-    Rscript -e "install.packages('BiocManager')" && \
-    Rscript -e "BiocManager::install(version = '3.16')" && \
-    Rscript -e "install.packages(c('curl', 'openssl', 'httr'), repos='https://cloud.r-project.org')" && \
-    Rscript -e "stopifnot(requireNamespace('curl'), requireNamespace('openssl'), requireNamespace('httr'))" && \
-    installBioc.r --update --deps NA --error GenomicInteractions AnnotationHub && \
-    install2.r --deps NA --error argparser remotes && \
-    Rscript -e "library(remotes); remotes::install_bitbucket('chicagoTeam/Chicago', subdir='Chicago', upgrade='never')"
+    Rscript -e "install.packages('BiocManager')"
+
+RUN Rscript -e "BiocManager::install(version = '3.16')"
+
+RUN Rscript -e "install.packages(c('curl', 'openssl', 'httr'), repos='https://cloud.r-project.org')" && \
+    Rscript -e "stopifnot(requireNamespace('curl'), requireNamespace('openssl'), requireNamespace('httr'))"
+
+RUN installBioc.r --update --deps NA --error GenomicInteractions AnnotationHub && \
+    install2.r --deps NA --error argparser remotes
+
+RUN Rscript -e "remotes::install_bitbucket('chicagoTeam/Chicago', subdir='Chicago', upgrade='never')"
 
 # Install Chicdiff dependencies
 RUN Rscript -e "BiocManager::install(c('DESeq2', 'IHW'), ask=FALSE, update=FALSE)"
