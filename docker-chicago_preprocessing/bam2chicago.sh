@@ -128,6 +128,7 @@ else
 fi
 
 echo "Removing reads that failed the min overhang filter..."
+: > "${samplename}/${bamname}_mappedToBaitsBoRAndRFrag_fmore06.bedpe"
 awk -v fless=$lessfilename -v fmore=${samplename}/${bamname}_mappedToBaitsBoRAndRFrag_fmore06.bedpe 'BEGIN{i=0; k=0}{
     if ($0~/\-1\t\-1/){
          print $0 > fless;
