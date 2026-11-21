@@ -6,7 +6,7 @@ LABEL description="Basic image with perl and bedtools"
 
 # Install essential packages
 RUN apt-get update -y && \
-    apt-get install -y wget build-essential perl bedtools samtools && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y wget build-essential perl bedtools samtools && \
     apt-get clean
 
 # Add bam2chicago script
